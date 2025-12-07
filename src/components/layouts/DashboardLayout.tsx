@@ -9,7 +9,7 @@ export default function DashboardLayout() {
     const [open, setOpen] = useState(false)
 
     const navItems = [
-        { to: "/", icon: LayoutDashboard, label: "Dashboard" },
+        { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
         { to: "/schedule", icon: Calendar, label: "Schedule" },
         { to: "/tasks", icon: CheckSquare, label: "Tasks" },
         { to: "/notes", icon: FileText, label: "Notes" },
@@ -18,7 +18,7 @@ export default function DashboardLayout() {
     const SidebarContent = () => (
         <div className="flex flex-col h-full">
             <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
-                <NavLink to="/" className="flex items-center gap-2 font-semibold">
+                <NavLink to="/dashboard" className="flex items-center gap-2 font-semibold">
                     <LayoutDashboard className="h-6 w-6" />
                     <span className="">Acadify</span>
                 </NavLink>

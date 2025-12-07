@@ -4,11 +4,16 @@ import Dashboard from "@/pages/Dashboard"
 import Schedule from "@/pages/Schedule"
 import Tasks from "@/pages/Tasks"
 import Notes from "@/pages/Notes"
+import LandingPage from "@/pages/LandingPage"
 import Login from "@/pages/Login"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import { useAuth } from "@/hooks/useAuth"
 
 const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <LandingPage />,
+  },
   {
     path: "/login",
     element: <Login />,
@@ -17,13 +22,12 @@ const router = createBrowserRouter([
     element: <ProtectedRoute />,
     children: [
       {
-        path: "/",
         element: <DashboardLayout />,
         children: [
-          { index: true, element: <Dashboard /> },
-          { path: "schedule", element: <Schedule /> },
-          { path: "tasks", element: <Tasks /> },
-          { path: "notes", element: <Notes /> },
+          { path: "/dashboard", element: <Dashboard /> },
+          { path: "/schedule", element: <Schedule /> },
+          { path: "/tasks", element: <Tasks /> },
+          { path: "/notes", element: <Notes /> },
         ],
       },
     ],
