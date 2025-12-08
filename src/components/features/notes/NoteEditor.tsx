@@ -2,10 +2,26 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import { Button } from '@/components/ui/button';
-import { Bold, Italic, Heading1, Heading2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import {
+    Bold, Italic, Heading1, Heading2,
+    Pin, Tag, BookOpen, Clock, MoreVertical, Trash2
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { Note } from '@/types/note';
 import { noteService } from '@/services/noteService';
+import { useScheduleStore } from '@/store/useScheduleStore';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 interface NoteEditorProps {
     note: Note;
@@ -13,6 +29,10 @@ interface NoteEditorProps {
 
 export function NoteEditor({ note }: NoteEditorProps) {
     const [isSaving, setIsSaving] = useState(false);
+    const [title, setTitle] = useState(note.title);
+    const [tagInput, setTagInput] = useState('');
+
+    const { classes } = useScheduleStore();
 
     const editor = useEditor({
         extensions: [
@@ -24,25 +44,25 @@ export function NoteEditor({ note }: NoteEditorProps) {
         content: note.content,
         editorProps: {
             attributes: {
-                class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[500px] p-4',
+                class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[500px] p-8',
             },
         },
         onUpdate: ({ editor }) => {
-            handleSave(editor.getHTML());
+            handleSave({ content: editor.getHTML() });
         },
     });
 
-    // Update editor content if note changes externally (e.g. switching notes)
+    // Sync local state when note prop changes
     useEffect(() => {
+        setTitle(note.title);
         if (editor && note.content !== editor.getHTML()) {
             editor.commands.setContent(note.content);
         }
-    }, [note.id, editor]); // Only reset if ID changes to avoid cursor jumps on self-update
+    }, [note.id, editor]);
 
-    // Custom debounce save logic
     const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    const handleSave = (content: string) => {
+    const handleSave = (updates: Partial<Note>) => {
         setIsSaving(true);
         if (saveTimeoutRef.current) {
             clearTimeout(saveTimeoutRef.current);
@@ -50,23 +70,150 @@ export function NoteEditor({ note }: NoteEditorProps) {
 
         saveTimeoutRef.current = setTimeout(async () => {
             try {
-                await noteService.updateNote(note.id, { content });
+                await noteService.updateNote(note.id, updates);
             } catch (error) {
                 console.error("Auto-save failed", error);
             } finally {
                 setIsSaving(false);
             }
-        }, 1500); // 1.5s debounce
+        }, 1000);
     };
 
-    if (!editor) {
-        return null;
-    }
+    const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newTitle = e.target.value;
+        setTitle(newTitle);
+        handleSave({ title: newTitle });
+    };
+
+    const togglePin = () => {
+        handleSave({ isPinned: !note.isPinned });
+        // Optimistic update for UI assumed handled by subscription or fast refresh
+    };
+
+    const handleClassSelect = (classId: string) => {
+        handleSave({ relatedClassId: classId === 'none' ? undefined : classId });
+    };
+
+    const handleAddTag = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && tagInput.trim()) {
+            const newTags = [...(note.tags || []), tagInput.trim()];
+            handleSave({ tags: newTags });
+            setTagInput('');
+        }
+    };
+
+    const removeTag = (tagToRemove: string) => {
+        const newTags = (note.tags || []).filter(t => t !== tagToRemove);
+        handleSave({ tags: newTags });
+    };
+
+    const handleDelete = async () => {
+        if (confirm("Are you sure you want to delete this note?")) {
+            await noteService.deleteNote(note.id);
+        }
+    };
+
+    if (!editor) return null;
+
+    const relatedClass = classes.find(c => c.id === note.relatedClassId);
 
     return (
-        <div className="flex flex-col h-full border rounded-md shadow-sm bg-background">
+        <div className="flex flex-col h-full bg-background relative group">
+            {/* Metadata Header */}
+            <div className="px-8 pt-6 pb-2 space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                    <Input
+                        value={title}
+                        onChange={handleTitleChange}
+                        className="text-4xl font-bold border-none shadow-none p-0 h-auto focus-visible:ring-0 placeholder:text-muted-foreground/50"
+                        placeholder="Untitled Note"
+                    />
+
+                    <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-xs text-muted-foreground w-16 text-right">
+                            {isSaving ? 'Saving...' : 'Saved'}
+                        </span>
+
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreVertical className="w-4 h-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={handleDelete} className="text-red-600">
+                                    <Trash2 className="w-4 h-4 mr-2" />
+                                    Delete Note
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
+                </div>
+
+                {/* Metadata Row */}
+                <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        <span>{format(note.updatedAt, 'MMM d, h:mm a')}</span>
+                    </div>
+
+                    <div className="h-4 w-px bg-border" />
+
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={togglePin}
+                        className={cn("h-7 px-2 gap-1.5", note.isPinned && "text-primary bg-primary/10")}
+                    >
+                        <Pin className={cn("w-3.5 h-3.5", note.isPinned && "fill-current")} />
+                        {note.isPinned ? 'Pinned' : 'Pin'}
+                    </Button>
+
+                    <div className="h-4 w-px bg-border" />
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className={cn("h-7 px-2 gap-1.5", note.relatedClassId && "text-primary bg-primary/10")}>
+                                <BookOpen className="w-3.5 h-3.5" />
+                                {relatedClass ? relatedClass.subject : 'Add Class'}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuLabel>Link to Class</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleClassSelect('none')}>None</DropdownMenuItem>
+                            {classes.map(cls => (
+                                <DropdownMenuItem key={cls.id} onClick={() => handleClassSelect(cls.id)}>
+                                    {cls.subject}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <div className="h-4 w-px bg-border" />
+
+                    <div className="flex items-center gap-2">
+                        <Tag className="w-3.5 h-3.5" />
+                        <div className="flex flex-wrap gap-1">
+                            {note.tags?.map(tag => (
+                                <Badge key={tag} variant="secondary" className="h-5 px-1.5 gap-1 text-[10px] font-normal cursor-pointer hover:bg-destructive hover:text-destructive-foreground" onClick={() => removeTag(tag)}>
+                                    {tag}
+                                </Badge>
+                            ))}
+                            <Input
+                                value={tagInput}
+                                onChange={(e) => setTagInput(e.target.value)}
+                                onKeyDown={handleAddTag}
+                                className="h-5 w-20 text-[10px] border-none shadow-none focus-visible:ring-0 p-0 min-w-[3rem]"
+                                placeholder="+ Tag"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Toolbar */}
-            <div className="flex items-center gap-1 p-2 border-b bg-muted/20">
+            <div className="sticky top-0 z-10 px-8 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b flex items-center gap-1">
                 <Button
                     variant="ghost"
                     size="sm"
@@ -85,7 +232,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
                 >
                     <Italic className="w-4 h-4" />
                 </Button>
-                <div className="w-px h-6 bg-border mx-1" />
+                <div className="w-px h-4 bg-border mx-1" />
                 <Button
                     variant="ghost"
                     size="sm"
@@ -102,10 +249,6 @@ export function NoteEditor({ note }: NoteEditorProps) {
                 >
                     <Heading2 className="w-4 h-4" />
                 </Button>
-
-                <div className="ml-auto text-xs text-muted-foreground">
-                    {isSaving ? 'Saving...' : 'Saved'}
-                </div>
             </div>
 
             {/* Editor Area */}
