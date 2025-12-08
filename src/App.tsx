@@ -1,6 +1,10 @@
 import { RouterProvider, createBrowserRouter } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
-import Dashboard from "@/pages/Dashboard"
+import TodayPage from "@/pages/TodayPage"
+
+// ... (in routes)
+
+
 import Schedule from "@/pages/Schedule"
 import Tasks from "@/pages/Tasks"
 import Notes from "@/pages/Notes"
@@ -25,7 +29,7 @@ const router = createBrowserRouter([
       {
         element: <DashboardLayout />,
         children: [
-          { path: "/dashboard", element: <Dashboard /> },
+          { path: "/dashboard", element: <TodayPage /> },
           { path: "/schedule", element: <Schedule /> },
           { path: "/tasks", element: <Tasks /> },
           { path: "/notes", element: <Notes /> },
