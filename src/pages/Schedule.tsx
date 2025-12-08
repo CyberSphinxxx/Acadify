@@ -1,10 +1,13 @@
+import { generateICS } from '@/lib/icsGenerator';
+import { Loader2, Download } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { SemesterSettingsDialog } from '@/components/features/schedule/SemesterSettingsDialog';
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { scheduleService } from '@/services/scheduleService';
 import type { ClassSession } from '@/types/schedule';
 import { ScheduleGrid } from '@/components/features/schedule/ScheduleGrid';
 import { AddClassDialog } from '@/components/features/schedule/AddClassDialog';
-import { Loader2 } from 'lucide-react';
 
 export default function Schedule() {
     const { user } = useAuth();
@@ -51,6 +54,19 @@ export default function Schedule() {
         }
     };
 
+    const handleExport = () => {
+        if (classes.length === 0) return;
+        const icsString = generateICS(classes);
+        const blob = new Blob([icsString], { type: 'text/calendar;charset=utf-8' });
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'acadify_schedule.ics');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     if (loading) {
         return (
             <div className="flex h-full items-center justify-center">
@@ -63,7 +79,14 @@ export default function Schedule() {
         <div className="flex flex-col h-full gap-4">
             <div className="flex items-center justify-between">
                 <h1 className="text-2xl font-bold">Class Schedule</h1>
-                <AddClassDialog onAddClass={handleAddClass} />
+                <div className="flex items-center gap-2">
+                    <SemesterSettingsDialog />
+                    <Button variant="outline" size="sm" onClick={handleExport} disabled={classes.length === 0}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Export Calendar
+                    </Button>
+                    <AddClassDialog onAddClass={handleAddClass} />
+                </div>
             </div>
 
             <div className="flex-1 min-h-0">
