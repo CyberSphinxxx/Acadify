@@ -5,6 +5,7 @@ import Schedule from "@/pages/Schedule"
 import Tasks from "@/pages/Tasks"
 import Notes from "@/pages/Notes"
 import LandingPage from "@/pages/LandingPage"
+import ProfilePage from "@/pages/ProfilePage"
 import Login from "@/pages/Login"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import { useAuth } from "@/hooks/useAuth"
@@ -28,6 +29,7 @@ const router = createBrowserRouter([
           { path: "/schedule", element: <Schedule /> },
           { path: "/tasks", element: <Tasks /> },
           { path: "/notes", element: <Notes /> },
+          { path: "/profile", element: <ProfilePage /> },
         ],
       },
     ],

@@ -59,3 +59,54 @@ export const getTasksDueToday = (tasks: Task[]): Task[] => {
         return isSameDay(t.dueDate, today);
     });
 };
+
+/**
+ * Calculate the current study streak in days.
+ * A streak is defined as consecutive days (ending today or yesterday) with activity.
+ * @param dates Array of activity dates (created/updated timestamps)
+ * @returns Number of days in the current streak
+ */
+export const calculateStreak = (dates: Date[]): number => {
+    if (dates.length === 0) return 0;
+
+    // 1. Normalize all dates to start of day strings to remove time & duplicates easily
+    const uniqueDays = Array.from(new Set(
+        dates.map(d => startOfDay(d).toISOString())
+    )).sort().reverse(); // Descending order: Today, Yesterday, ...
+
+    if (uniqueDays.length === 0) return 0;
+
+    const today = startOfDay(new Date());
+    const yesterday = startOfDay(new Date(Date.now() - 86400000));
+
+    // 2. Check if the most recent activity is today or yesterday. 
+    // If last activity was 2 days ago, streak is broken -> 0.
+    const lastActivity = new Date(uniqueDays[0]);
+
+    if (!isSameDay(lastActivity, today) && !isSameDay(lastActivity, yesterday)) {
+        return 0;
+    }
+
+    // 3. Count consecutive days
+    const latestDayStr = uniqueDays[0];
+    const latestDay = new Date(latestDayStr);
+
+    let streak = 1;
+    let previousDate = latestDay; // Start from the most recent one we found
+
+    for (let i = 1; i < uniqueDays.length; i++) {
+        const currentDate = new Date(uniqueDays[i]);
+
+        const expectedDate = new Date(previousDate);
+        expectedDate.setDate(previousDate.getDate() - 1);
+
+        if (isSameDay(currentDate, expectedDate)) {
+            streak++;
+            previousDate = currentDate;
+        } else {
+            break; // Streak broken
+        }
+    }
+
+    return streak;
+};
