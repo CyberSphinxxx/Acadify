@@ -1,6 +1,7 @@
 import { RouterProvider, createBrowserRouter } from "react-router-dom"
 import DashboardLayout from "@/components/layouts/DashboardLayout"
 import TodayPage from "@/pages/TodayPage"
+import FocusPage from "@/pages/FocusPage"
 
 // ... (in routes)
 
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
           { path: "/dashboard", element: <TodayPage /> },
           { path: "/schedule", element: <Schedule /> },
           { path: "/tasks", element: <Tasks /> },
+          { path: "/focus", element: <FocusPage /> },
           { path: "/notes", element: <Notes /> },
           { path: "/profile", element: <ProfilePage /> },
         ],
