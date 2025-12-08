@@ -6,7 +6,6 @@ import { Bold, Italic, Heading1, Heading2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { Note } from '@/types/note';
 import { noteService } from '@/services/noteService';
-import { useDebounce } from '@/hooks/useDebounce'; // Assuming we might need this or just custom logic
 
 interface NoteEditorProps {
     note: Note;
@@ -41,7 +40,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
     }, [note.id, editor]); // Only reset if ID changes to avoid cursor jumps on self-update
 
     // Custom debounce save logic
-    const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const handleSave = (content: string) => {
         setIsSaving(true);
