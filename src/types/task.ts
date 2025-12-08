@@ -10,5 +10,7 @@ export interface Task {
     priority: TaskPriority;
     dueDate?: Date; // Use Date object for easier manipulation locally, convert to Timestamp for Firestore
     relatedClassId?: string;
+    isRecurring?: boolean;
+    recurrencePattern?: 'DAILY' | 'WEEKLY' | 'MONTHLY';
     createdAt: Date;
 }
