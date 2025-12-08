@@ -50,6 +50,7 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
 
     const tasksByStatus = useMemo(() => {
         const acc: Record<TaskStatus, Task[]> = {
+            INBOX: [],
             TODO: [],
             IN_PROGRESS: [],
             DONE: []

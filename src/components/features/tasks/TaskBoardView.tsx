@@ -49,6 +49,7 @@ export function TaskBoardView({ tasks }: TaskBoardViewProps) {
 
     const tasksByStatus = useMemo(() => {
         const acc: Record<TaskStatus, Task[]> = {
+            INBOX: [],
             TODO: [],
             IN_PROGRESS: [],
             DONE: []
