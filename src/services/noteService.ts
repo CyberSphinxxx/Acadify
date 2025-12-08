@@ -7,8 +7,7 @@ import {
     query,
     where,
     onSnapshot,
-    Timestamp,
-    orderBy
+    Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Note } from '@/types/note';
