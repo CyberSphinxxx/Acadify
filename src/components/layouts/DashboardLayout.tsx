@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Outlet, NavLink } from "react-router-dom"
-import { LayoutDashboard, Calendar, CheckSquare, FileText, Menu } from "lucide-react"
+import { LayoutDashboard, Calendar, CheckSquare, FileText, Menu, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { cn } from "@/lib/utils"
@@ -15,6 +15,7 @@ export default function DashboardLayout() {
         { to: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
         { to: "/schedule", icon: Calendar, label: "Schedule" },
         { to: "/tasks", icon: CheckSquare, label: "Tasks" },
+        { to: "/focus", icon: Target, label: "Focus Studio" },
         { to: "/notes", icon: FileText, label: "Notes" },
     ]
 
