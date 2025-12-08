@@ -12,3 +12,11 @@ export interface ClassSession {
 }
 
 export const DAYS_OF_WEEK = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+export interface Semester {
+    id?: string;
+    label: string;
+    startDate: Date;
+    endDate: Date;
+    holidays: Date[];
+}
