@@ -22,7 +22,6 @@ export default function ProfilePage() {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [displayName, setDisplayName] = useState(user?.displayName || '');
-    const [loadingStats, setLoadingStats] = useState(true);
 
     // Store raw data to compute streak precisely
     const [rawData, setRawData] = useState<{ tasks: Task[], notes: Note[] }>({ tasks: [], notes: [] });
@@ -49,7 +48,8 @@ export default function ProfilePage() {
                 setRawData(prev => ({ ...prev, notes }));
             });
 
-            setLoadingStats(false);
+
+
 
             return () => {
                 unsubTasks();
