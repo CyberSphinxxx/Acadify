@@ -1,10 +1,13 @@
-import { useMemo } from 'react';
-import { differenceInMinutes, parse } from 'date-fns';
+import { useMemo, useEffect, useRef } from 'react';
+import { differenceInMinutes, parse, startOfWeek, addDays, isSameDay, format } from 'date-fns';
+import { useScheduleStore } from '@/store/useScheduleStore';
 import type { ClassSession } from '@/types/schedule';
 import { DAYS_OF_WEEK } from '@/types/schedule';
 import { cn } from '@/lib/utils';
-import { X } from 'lucide-react';
-
+import { Pencil, Trash2 } from 'lucide-react';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
+import { Button } from '@/components/ui/button';
+import { CurrentTimeIndicator } from './CurrentTimeIndicator';
 
 interface ScheduleGridProps {
     classes: ClassSession[];
@@ -12,7 +15,7 @@ interface ScheduleGridProps {
 }
 
 const START_HOUR = 7; // 7 AM
-const END_HOUR = 22;  // 10 PM
+const END_HOUR = 24;  // Midnight - Extended to accommodate late classes/viewing
 const TIME_SLOTS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => i + START_HOUR);
 
 interface PositionedClass extends ClassSession {
@@ -21,22 +24,42 @@ interface PositionedClass extends ClassSession {
     left: number;
     width: number;
     zIndex: number;
-    isHovered?: boolean;
 }
 
 export function ScheduleGrid({ classes, onDeleteClass }: ScheduleGridProps) {
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    const { currentSemester, addHoliday, removeHoliday } = useScheduleStore();
+
+    // Auto-scroll to center current time on mount
+    useEffect(() => {
+        if (scrollContainerRef.current) {
+            const now = new Date();
+            const hour = now.getHours();
+
+            if (hour < START_HOUR) {
+                // Scroll to top
+                scrollContainerRef.current.scrollTop = 0;
+            } else if (hour > END_HOUR) {
+                // Scroll to bottom
+                scrollContainerRef.current.scrollTop = scrollContainerRef.current.scrollHeight;
+            } else {
+                // Scroll to current time (minus offset for context)
+                const scrollPos = (hour - START_HOUR) * 100 - 200;
+                scrollContainerRef.current.scrollTop = scrollPos > 0 ? scrollPos : 0;
+            }
+        }
+    }, [classes]); // Re-run if classes change, or essentially on mount + updates
+
     const positionedClasses = useMemo(() => {
         const positioned: PositionedClass[] = [];
 
         DAYS_OF_WEEK.forEach((_, dayIndex) => {
-            // 1. Filter classes for the day
             const daysClasses = classes
                 .filter(c => c.dayOfWeek === dayIndex)
                 .sort((a, b) => a.startTime.localeCompare(b.startTime));
 
             if (daysClasses.length === 0) return;
 
-            // 2. Calculate vertical position (top, height)
             const dayStart = parse(`${START_HOUR}:00`, 'HH:mm', new Date());
 
             const sessionBlocks = daysClasses.map(session => {
@@ -54,16 +77,12 @@ export function ScheduleGrid({ classes, onDeleteClass }: ScheduleGridProps) {
                 };
             });
 
-            // 3. Calculate horizontal overlap
-            // Simple greedy coloring algorithm for column layout
             const columns: any[][] = [];
 
             sessionBlocks.forEach(session => {
                 let placed = false;
-                // Try to place in an existing column
                 for (let i = 0; i < columns.length; i++) {
                     const col = columns[i];
-                    // Check for collision with the last event in this column
                     const lastInCol = col[col.length - 1];
                     if (session.startVals >= lastInCol.endVals) {
                         col.push(session);
@@ -79,17 +98,6 @@ export function ScheduleGrid({ classes, onDeleteClass }: ScheduleGridProps) {
                 }
             });
 
-            // We need a more sophisticated grouping to divide width equally
-            // Find connected components (groups of overlapping events)
-            // For simplicity in this iteration, we just divide by max columns found in the day roughly
-            // Better approach: Sweep-line or interval coloring. 
-            // Let's settle for a simplified "shared width" logic for now: 
-            // width = 100% / max_overlaps_at_this_time. 
-            // But calculating exact left offset is tricky without complex graph coloring.
-            // 
-            // Fallback: visual style overlap with slight offset.
-            // or simple Column-based:
-
             const maxCols = columns.length;
 
             sessionBlocks.forEach((session: any) => {
@@ -100,12 +108,24 @@ export function ScheduleGrid({ classes, onDeleteClass }: ScheduleGridProps) {
                     zIndex: 10
                 } as PositionedClass);
             });
-
         });
 
         return positioned;
     }, [classes]);
 
+    const today = new Date();
+    const startOfCurrentWeek = startOfWeek(today, { weekStartsOn: 0 }); // 0 = Sunday
+    const weekDates = DAYS_OF_WEEK.map((_, i) => addDays(startOfCurrentWeek, i));
+
+    const handleDateContextMenu = (e: React.MouseEvent, date: Date) => {
+        e.preventDefault();
+        const isAlreadyHoliday = currentSemester?.holidays.some(h => isSameDay(h, date));
+        if (isAlreadyHoliday) {
+            removeHoliday(date);
+        } else {
+            addHoliday(date);
+        }
+    };
 
     return (
         <div className="flex flex-col h-full bg-background border rounded-lg overflow-hidden">
@@ -113,16 +133,32 @@ export function ScheduleGrid({ classes, onDeleteClass }: ScheduleGridProps) {
             <div className="grid grid-cols-[60px_1fr] border-b">
                 <div className="p-2 border-r bg-muted/50"></div>
                 <div className="grid grid-cols-7 divide-x">
-                    {DAYS_OF_WEEK.map((day) => (
-                        <div key={day} className="p-2 text-center text-sm font-medium bg-muted/50 truncate">
-                            {day}
-                        </div>
-                    ))}
+                    {weekDates.map((date) => {
+                        const isToday = isSameDay(date, today);
+                        const isHoliday = currentSemester?.holidays.some(h => isSameDay(h, date));
+                        return (
+                            <div
+                                key={date.toString()}
+                                className={cn(
+                                    "p-2 text-center text-sm font-medium bg-muted/50 truncate flex flex-col justify-center cursor-context-menu hover:bg-muted/80 transition-colors select-none",
+                                    isToday && "bg-primary/5 text-primary",
+                                    isHoliday && "bg-muted/80 text-muted-foreground line-through decoration-destructive"
+                                )}
+                                onContextMenu={(e) => handleDateContextMenu(e, date)}
+                                title="Right-click to toggle holiday"
+                            >
+                                <span>{format(date, 'EEE')}</span>
+                                <span className={cn("text-xs font-normal", isToday ? "text-primary/80" : "text-muted-foreground")}>
+                                    {format(date, 'MMM d')}
+                                </span>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
 
             {/* Grid Body */}
-            <div className="flex-1 overflow-y-auto max-h-[800px]">
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto max-h-[800px] scroll-smooth">
                 <div className="grid grid-cols-[60px_1fr] relative min-h-[1600px]">
                     {/* Time Labels Column */}
                     <div className="border-r bg-muted/10 divide-y relative">
@@ -135,50 +171,93 @@ export function ScheduleGrid({ classes, onDeleteClass }: ScheduleGridProps) {
 
                     {/* Days Columns Container */}
                     <div className="grid grid-cols-7 divide-x relative">
-                        {DAYS_OF_WEEK.map((day, i) => (
-                            <div key={day} className="relative h-full odd:bg-muted/5">
-                                {/* Horizontal Grid Lines */}
-                                {TIME_SLOTS.map(hour => (
-                                    <div key={hour} className="h-[100px] border-b border-dashed border-border/50 w-full absolute top-0" style={{ top: `${(hour - START_HOUR) * 100}px` }}></div>
-                                ))}
+                        {/* Live Time Indicator (Overlay) */}
+                        <div className="absolute inset-x-0 h-full pointer-events-none z-10">
+                            <CurrentTimeIndicator startHour={START_HOUR} endHour={END_HOUR} />
+                        </div>
 
-                                {/* Classes */}
-                                {positionedClasses.filter(c => c.dayOfWeek === i).map(session => (
-                                    <div
-                                        key={session.id}
-                                        className={cn(
-                                            "absolute rounded-md border p-1 text-xs shadow-sm overflow-hidden hover:z-50 hover:shadow-md transition-all group",
-                                            // approximate brightness check or just predefined style
-                                            "border-l-4"
-                                        )}
-                                        style={{
-                                            top: `${session.top}px`,
-                                            height: `${session.height}px`,
-                                            left: `${session.left}%`,
-                                            width: `${session.width}%`,
-                                            backgroundColor: `${session.color}20`, // 20% opacity background
-                                            borderLeftColor: session.color,
-                                        }}
-                                    >
-                                        <div className="flex justify-between items-start">
-                                            <span className="font-bold truncate">{session.code}</span>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onDeleteClass(session.id);
-                                                }}
-                                                className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
-                                            >
-                                                <X className="h-3 w-3" />
-                                            </button>
+                        {weekDates.map((date, i) => {
+                            const isHoliday = currentSemester?.holidays.some(h => isSameDay(h, date));
+
+                            return (
+                                <div key={date.toString()} className={cn("relative h-full", i % 2 === 0 ? "bg-background" : "bg-muted/5")}>
+                                    {/* Horizontal Grid Lines */}
+                                    {TIME_SLOTS.map(hour => (
+                                        <div key={hour} className="h-[100px] border-b border-dashed border-border/50 w-full absolute top-0" style={{ top: `${(hour - START_HOUR) * 100}px` }}></div>
+                                    ))}
+
+                                    {/* Holiday Overlay */}
+                                    {isHoliday && (
+                                        <div className="absolute inset-0 bg-muted/80 z-20 flex flex-col items-center justify-center p-2 text-center select-none backdrop-blur-[1px]">
+                                            <span className="font-bold text-muted-foreground/50 tracking-widest text-lg rotate-90 sm:rotate-0 whitespace-nowrap">
+                                                NO CLASSES
+                                            </span>
                                         </div>
-                                        <div className="font-semibold truncate text-[10px] sm:text-xs">{session.subject}</div>
-                                        <div className="text-[10px] text-muted-foreground truncate">{session.startTime} - {session.endTime}</div>
-                                        {session.room && <div className="text-[10px] truncate">{session.room}</div>}
-                                    </div>
-                                ))}
-                            </div>
-                        ))}
+                                    )}
+
+                                    {/* Classes - Only Render if NOT a holiday */}
+                                    {!isHoliday && positionedClasses.filter(c => c.dayOfWeek === i).map(session => (
+                                        <HoverCard key={session.id}>
+                                            <HoverCardTrigger asChild>
+                                                <div
+                                                    className={cn(
+                                                        "absolute rounded-md border p-1 text-xs shadow-sm overflow-hidden hover:z-50 hover:shadow-md transition-all cursor-pointer group hover:ring-2 hover:ring-primary/50",
+                                                        "border-l-4"
+                                                    )}
+                                                    style={{
+                                                        top: `${session.top}px`,
+                                                        height: `${session.height}px`,
+                                                        left: `${session.left}%`,
+                                                        width: `${session.width}%`,
+                                                        backgroundColor: `${session.color}20`,
+                                                        borderLeftColor: session.color,
+                                                    }}
+                                                >
+                                                    <div className="font-bold truncate">{session.code}</div>
+                                                    <div className="font-semibold truncate text-[10px] sm:text-xs">{session.subject}</div>
+                                                    <div className="text-[10px] text-muted-foreground truncate">{session.startTime} - {session.endTime}</div>
+                                                </div>
+                                            </HoverCardTrigger>
+                                            <HoverCardContent className="w-80 p-0 overflow-hidden" align="start" side="right">
+                                                <div className="bg-muted p-4 border-b">
+                                                    <h4 className="font-bold text-lg">{session.subject}</h4>
+                                                    <span className="text-muted-foreground text-sm font-mono">{session.code}</span>
+                                                </div>
+                                                <div className="p-4 space-y-3">
+                                                    <div className="grid grid-cols-2 gap-2 text-sm">
+                                                        <div>
+                                                            <span className="text-muted-foreground text-xs block uppercase tracking-wider">Time</span>
+                                                            <span className="font-medium">{session.startTime} - {session.endTime}</span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="text-muted-foreground text-xs block uppercase tracking-wider">Room</span>
+                                                            <span className="font-medium">{session.room || "N/A"}</span>
+                                                        </div>
+                                                        <div className="col-span-2">
+                                                            <span className="text-muted-foreground text-xs block uppercase tracking-wider">Instructor</span>
+                                                            <span className="font-medium">{session.instructor || "Not assigned"}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="p-2 bg-muted/30 border-t flex justify-end gap-2">
+                                                    <Button variant="ghost" size="sm" className="h-8 gap-2 hover:text-primary">
+                                                        <Pencil className="w-3.5 h-3.5" /> Edit
+                                                    </Button>
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                        onClick={() => onDeleteClass(session.id)}
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" /> Delete
+                                                    </Button>
+                                                </div>
+                                            </HoverCardContent>
+                                        </HoverCard>
+                                    ))}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
