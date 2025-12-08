@@ -32,7 +32,18 @@ export default function TodayPage() {
         [tasks, today]);
 
     const dueTodayTasks = useMemo(() =>
-        tasks.filter(t => t.status !== 'DONE' && t.dueDate && isSameDay(t.dueDate, today)),
+        tasks.filter(t =>
+            t.status !== 'DONE' &&
+            (
+                (t.dueDate && isSameDay(t.dueDate, today)) ||
+                t.status === 'INBOX'
+            )
+        ).sort((a, b) => {
+            // Sort: High Priority > Inbox > Others
+            if (a.status === 'INBOX' && b.status !== 'INBOX') return -1;
+            if (a.status !== 'INBOX' && b.status === 'INBOX') return 1;
+            return 0; // Keep existing sort or improve
+        }),
         [tasks, today]);
 
     const remainingClasses = useMemo(() => {
