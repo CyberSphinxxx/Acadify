@@ -1,5 +1,11 @@
-export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE';
+export type TaskStatus = 'INBOX' | 'TODO' | 'IN_PROGRESS' | 'DONE';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface Subtask {
+    id: string;
+    title: string;
+    completed: boolean;
+}
 
 export interface Task {
     id: string;
@@ -12,5 +18,12 @@ export interface Task {
     relatedClassId?: string;
     isRecurring?: boolean;
     recurrencePattern?: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+    department?: string; // Optional field if needed
+
+    // Workflow Hub Fields
+    isArchived?: boolean;
+    subtasks?: Subtask[];
+    notes?: string;
+
     createdAt: Date;
 }
