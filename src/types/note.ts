@@ -3,10 +3,11 @@ export interface Note {
     userId: string;
     title: string;
     content: string; // HTML content
-    isPinned?: boolean;
-    tags?: string[];
-    relatedClassId?: string;
-    folder?: string;
+    isPinned?: boolean | null;
+    tags?: string[] | null;
+    relatedClassId?: string | null;
+    relatedTaskId?: string | null;
+    folder?: string | null;
     createdAt: Date;
     updatedAt: Date;
 }

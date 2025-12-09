@@ -24,6 +24,12 @@ export interface Task {
     isArchived?: boolean;
     subtasks?: Subtask[];
     notes?: string;
+    resourceLinks?: { name: string; url: string; }[];
+    isFocusSession?: boolean; // Persists session activation state
+
+    // Focus Timer Persistence
+    focusStartTime?: number | null; // Timestamp (Date.now()) or null if paused
+    accumulatedFocusTime?: number; // Total seconds spent previously
 
     createdAt: Date;
 }

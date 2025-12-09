@@ -24,7 +24,9 @@ export default function Notes() {
         fetchClasses(user.uid); // Fetch classes for filters/metadata
 
         const unsubscribe = noteService.subscribeToNotes(user.uid, (fetchedNotes) => {
-            setNotes(fetchedNotes);
+            // Filter out Focus Session notes (those linked to a task)
+            const generalNotes = fetchedNotes.filter(n => !n.relatedTaskId);
+            setNotes(generalNotes);
             setLoading(false);
         });
 

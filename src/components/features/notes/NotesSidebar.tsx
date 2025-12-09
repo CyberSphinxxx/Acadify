@@ -9,7 +9,7 @@ import {
     Clock,
     Filter
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { noteService } from '@/services/noteService';
 import { Input } from '@/components/ui/input';
@@ -186,7 +186,7 @@ function NoteItem({ note, selectedNoteId, onSelect }: { note: Note, selectedNote
                     </p>
                     <div className="flex items-center gap-2 mt-2">
                         <span className="text-[10px] text-muted-foreground/70">
-                            {formatDistanceToNow(note.updatedAt, { addSuffix: true })}
+                            {isValid(new Date(note.updatedAt)) ? formatDistanceToNow(note.updatedAt, { addSuffix: true }) : 'Just now'}
                         </span>
                         {note.tags && note.tags.length > 0 && (
                             <div className="flex gap-1 overflow-hidden">

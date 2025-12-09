@@ -7,7 +7,7 @@ interface TaskStore {
     loading: boolean;
     error: string | null;
     fetchTasks: (userId: string) => Promise<void>;
-    addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>) => Promise<string>;
+    addTask: (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> & { createdAt?: Date }) => Promise<string>;
     updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
     deleteTask: (id: string) => Promise<void>;
 }
@@ -19,14 +19,9 @@ export const useTaskStore = create<TaskStore>((set) => ({
     fetchTasks: async (userId: string) => {
         set({ loading: true, error: null });
         try {
-            // Subscribe to tasks instead of one-time fetch to keep it real-time
-            // Note: In a real app, we might handle subscription cleanup differently
-            // For now, we'll just use the service's subscribe method and update state
             taskService.subscribeToTasks(userId, (tasks) => {
                 set({ tasks, loading: false });
             });
-            // We return a promise that resolves immediately as the subscription is active
-            // Ideally we'd store the unsubscribe function to call it later but keeping it simple for now
         } catch (error) {
             console.error('Failed to fetch tasks:', error);
             set({ error: 'Failed to fetch tasks', loading: false });
@@ -35,12 +30,24 @@ export const useTaskStore = create<TaskStore>((set) => ({
     addTask: async (taskData) => {
         set({ loading: true, error: null });
         try {
+            const createdAt = taskData.createdAt || new Date();
+            // Optimistic Update
+            const tempId = crypto.randomUUID();
+            const optimisticTask = { ...taskData, id: tempId, createdAt } as Task;
+
+            set(state => ({ tasks: [...state.tasks, optimisticTask] }));
+
             const id = await taskService.addTask({
                 ...taskData,
-                createdAt: new Date(),
-                // Default recurrence fields if needed, or let them be undefined
+                createdAt,
             });
-            set({ loading: false });
+
+            // Update with real ID once confirmed (taskService subscription will likely handle this too, but this ensures consistency)
+            set(state => ({
+                tasks: state.tasks.map(t => t.id === tempId ? { ...t, id } : t),
+                loading: false
+            }));
+
             return id;
         } catch (error) {
             console.error('Failed to add task:', error);

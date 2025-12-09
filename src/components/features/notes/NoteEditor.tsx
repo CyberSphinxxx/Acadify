@@ -21,7 +21,7 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 
 interface NoteEditorProps {
     note: Note;
@@ -70,6 +70,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
 
         saveTimeoutRef.current = setTimeout(async () => {
             try {
+                // Ensure optional fields are handled safely by noteService
                 await noteService.updateNote(note.id, updates);
             } catch (error) {
                 console.error("Auto-save failed", error);
@@ -91,7 +92,8 @@ export function NoteEditor({ note }: NoteEditorProps) {
     };
 
     const handleClassSelect = (classId: string) => {
-        handleSave({ relatedClassId: classId === 'none' ? undefined : classId });
+        // Explicitly use null for 'none' to satisfy Firestore requirements (though service handles it)
+        handleSave({ relatedClassId: classId === 'none' ? null : classId });
     };
 
     const handleAddTag = (e: React.KeyboardEvent) => {
@@ -154,7 +156,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
                 <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4" />
-                        <span>{format(note.updatedAt, 'MMM d, h:mm a')}</span>
+                        <span>{isValid(new Date(note.updatedAt)) ? format(note.updatedAt, 'MMM d, h:mm a') : 'Just now'}</span>
                     </div>
 
                     <div className="h-4 w-px bg-border" />

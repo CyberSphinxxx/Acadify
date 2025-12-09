@@ -11,18 +11,20 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Note } from '@/types/note';
+import { removeUndefined } from '@/lib/utils';
 
 const NOTES_COLLECTION = 'notes';
 
 export const noteService = {
     // Create a new blank note
-    createNote: async (userId: string) => {
+    createNote: async (userId: string, relatedTaskId?: string) => {
         try {
             const now = new Date();
             const docRef = await addDoc(collection(db, NOTES_COLLECTION), {
                 userId,
                 title: 'Untitled Note',
                 content: '',
+                relatedTaskId: relatedTaskId || null,
                 createdAt: Timestamp.fromDate(now),
                 updatedAt: Timestamp.fromDate(now)
             });
@@ -47,8 +49,8 @@ export const noteService = {
                 return {
                     id: doc.id,
                     ...data,
-                    createdAt: data.createdAt?.toDate(),
-                    updatedAt: data.updatedAt?.toDate()
+                    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : null),
+                    updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : (data.updatedAt ? new Date(data.updatedAt) : null)
                 } as Note;
             });
             callback(notes);
@@ -64,10 +66,10 @@ export const noteService = {
                 updatedAt: Timestamp.fromDate(new Date())
             };
 
-            // Remove local date fields if present in updates (they shouldn't be, but safe guard)
-            // We always want server timestamp or new Date() for updatedAt
+            // Sanitize updates to remove undefined values
+            const sanitizedUpdates = removeUndefined(firestoreUpdates);
 
-            await updateDoc(docRef, firestoreUpdates);
+            await updateDoc(docRef, sanitizedUpdates);
         } catch (error) {
             console.error("Error updating note: ", error);
             throw error;

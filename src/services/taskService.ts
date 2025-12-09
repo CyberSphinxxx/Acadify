@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Task, TaskStatus } from '@/types/task';
+import { removeUndefined } from '@/lib/utils';
 
 const TASKS_COLLECTION = 'tasks';
 
@@ -47,8 +48,8 @@ export const taskService = {
                     id: doc.id,
                     ...data,
                     // Convert Timestamps back to JS Dates
-                    createdAt: data.createdAt?.toDate(),
-                    dueDate: data.dueDate?.toDate()
+                    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : new Date()),
+                    dueDate: data.dueDate?.toDate ? data.dueDate.toDate() : (data.dueDate ? new Date(data.dueDate) : undefined)
                 } as Task;
             });
             callback(tasks);
@@ -66,7 +67,10 @@ export const taskService = {
             }
             // CreateAt should usually not be updated, but if so handle it
 
-            await updateDoc(taskRef, firestoreUpdates);
+            // Sanitize updates
+            const sanitizedUpdates = removeUndefined(firestoreUpdates);
+
+            await updateDoc(taskRef, sanitizedUpdates);
         } catch (error) {
             console.error("Error updating task: ", error);
             throw error;

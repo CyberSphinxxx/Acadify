@@ -1,6 +1,6 @@
 import type { ClassSession } from '@/types/schedule';
 import type { Task } from '@/types/task';
-import { differenceInMinutes, isSameDay, parse, startOfDay } from 'date-fns';
+import { differenceInMinutes, isSameDay, parse, startOfDay, isValid } from 'date-fns';
 
 /**
  * Get classes for the current day of the week.
@@ -71,7 +71,9 @@ export const calculateStreak = (dates: Date[]): number => {
 
     // 1. Normalize all dates to start of day strings to remove time & duplicates easily
     const uniqueDays = Array.from(new Set(
-        dates.map(d => startOfDay(d).toISOString())
+        dates
+            .filter(d => isValid(d))
+            .map(d => startOfDay(d).toISOString())
     )).sort().reverse(); // Descending order: Today, Yesterday, ...
 
     if (uniqueDays.length === 0) return 0;

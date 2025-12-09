@@ -3,7 +3,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'; // We might need to adjust Card imports if we want tighter control
 import { Badge } from '@/components/ui/badge';
 import type { Task } from '@/types/task';
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 
 interface TaskCardProps {
@@ -56,7 +56,7 @@ export function TaskCard({ task }: TaskCardProps) {
                     )}
                     {task.dueDate && (
                         <div className="text-xs text-muted-foreground flex items-center">
-                            Due: {format(task.dueDate, 'MMM d')}
+                            Due: {isValid(new Date(task.dueDate)) ? format(task.dueDate, 'MMM d') : 'Invalid Date'}
                         </div>
                     )}
                 </CardContent>
