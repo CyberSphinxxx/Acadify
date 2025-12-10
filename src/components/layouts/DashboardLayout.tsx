@@ -26,7 +26,7 @@ export default function DashboardLayout() {
             <div className="flex flex-col h-full">
                 <div className="flex h-14 items-center border-b px-4 lg:h-[60px] lg:px-6">
                     <NavLink to="/dashboard" className="flex items-center gap-2 font-semibold">
-                        <LayoutDashboard className="h-6 w-6" />
+                        <img src="/acadify.svg" alt="Acadify" className="h-6 w-6" />
                         <span className="">Acadify</span>
                     </NavLink>
                 </div>
