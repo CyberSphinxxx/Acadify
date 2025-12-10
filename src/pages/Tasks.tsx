@@ -54,7 +54,10 @@ export default function Tasks() {
         if (filterStatus === 'PENDING') matchesStatus = task.status !== 'DONE';
         if (filterStatus === 'DONE') matchesStatus = task.status === 'DONE';
 
-        return matchesSearch && matchesStatus;
+        // 3. Exclude Focus Sessions
+        const isNotFocusSession = !task.isFocusSession;
+
+        return matchesSearch && matchesStatus && isNotFocusSession;
     });
 
     if (loading) {
