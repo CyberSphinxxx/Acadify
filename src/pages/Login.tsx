@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft, GraduationCap, Library, BookOpen, CheckCircle2 } from 'lucide-react';
+import { Loader2, ArrowLeft, CheckCircle2 } from 'lucide-react';
 
 export default function Login() {
     const { user, loading, signInWithGoogle } = useAuth();
@@ -27,8 +27,8 @@ export default function Login() {
             {/* Left Panel - Branding (Visible on Desktop) */}
             <div className="hidden lg:flex flex-col justify-between bg-zinc-900 p-10 text-white relative overflow-hidden">
                 {/* Abstract Background Pattern */}
-                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=2573&auto=format&fit=crop')] bg-cover bg-center opacity-20 contrast-125 saturate-0 mix-blend-overlay"></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-zinc-900/80 to-transparent"></div>
+                <div className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=2573&auto=format&fit=crop')] bg-cover bg-center opacity-10 contrast-125 saturate-0 mix-blend-overlay pointer-events-none"></div>
+                <div className="absolute inset-0 bg-gradient-to-b from-zinc-900/50 via-zinc-900/80 to-zinc-900 pointer-events-none"></div>
 
                 {/* Content */}
                 <div className="relative z-10 flex items-center gap-2 font-bold text-xl">
