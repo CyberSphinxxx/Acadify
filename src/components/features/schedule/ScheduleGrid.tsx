@@ -8,8 +8,7 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Button } from '@/components/ui/button';
 import { CurrentTimeIndicator } from './CurrentTimeIndicator';
-import { Card } from "@/components/ui/card";
-import { Edit, MapPin, User, Clock } from "lucide-react";
+// Unused imports moved or removed in refactor
 import {
     AlertDialog,
     AlertDialogAction,
