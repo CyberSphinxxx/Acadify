@@ -23,7 +23,8 @@ import { createPortal } from 'react-dom';
 
 interface KanbanBoardProps {
     tasks: Task[];
-    setTasks?: (tasks: Task[]) => void; // Optional local optimistic update if needed
+    setTasks?: (tasks: Task[]) => void;
+    onDelete: (id: string) => void;
 }
 
 const dropAnimation: DropAnimation = {
@@ -36,7 +37,7 @@ const dropAnimation: DropAnimation = {
     }),
 };
 
-export function KanbanBoard({ tasks }: KanbanBoardProps) {
+export function KanbanBoard({ tasks, onDelete }: KanbanBoardProps) {
     const [activeId, setActiveId] = useState<string | null>(null);
 
     const columns: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE'];
@@ -123,6 +124,7 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
                             id={status}
                             title={status.replace('_', ' ')}
                             tasks={tasksByStatus[status]}
+                            onDelete={onDelete}
                         />
                     </div>
                 ))}
@@ -130,7 +132,7 @@ export function KanbanBoard({ tasks }: KanbanBoardProps) {
 
             {createPortal(
                 <DragOverlay dropAnimation={dropAnimation}>
-                    {activeTask ? <TaskCard task={activeTask} /> : null}
+                    {activeTask ? <TaskCard task={activeTask} onDelete={onDelete} /> : null}
                 </DragOverlay>,
                 document.body
             )}
