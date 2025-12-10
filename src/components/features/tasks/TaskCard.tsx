@@ -6,11 +6,15 @@ import type { Task } from '@/types/task';
 import { format, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 
+import { Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
 interface TaskCardProps {
     task: Task;
+    onDelete: (id: string) => void;
 }
 
-export function TaskCard({ task }: TaskCardProps) {
+export function TaskCard({ task, onDelete }: TaskCardProps) {
     const {
         attributes,
         listeners,
@@ -36,7 +40,7 @@ export function TaskCard({ task }: TaskCardProps) {
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="mb-3 touch-none">
+        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="mb-3 touch-none group relative">
             <Card className="cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow">
                 <CardHeader className="p-4 pb-2">
                     <div className="flex justify-between items-start">
@@ -60,6 +64,25 @@ export function TaskCard({ task }: TaskCardProps) {
                         </div>
                     )}
                 </CardContent>
+
+                {/* Delete Button (Visible on Hover) */}
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-muted-foreground hover:text-destructive bg-background/50 backdrop-blur-sm"
+                        onPointerDown={(e) => {
+                            // Using onPointerDown to capture event before drag starts
+                            e.stopPropagation();
+                        }}
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete(task.id);
+                        }}
+                    >
+                        <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                </div>
             </Card>
         </div>
     );
