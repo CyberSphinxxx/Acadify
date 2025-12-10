@@ -1,11 +1,11 @@
 import * as React from "react"
 import { cn } from "@/lib/utils"
 
-const TabsContext = React.createContext<{ value: string; onValueChange: (value: string) => void } | null>(null)
+const TabsContext = React.createContext<{ value?: string; onValueChange: (value: string) => void } | null>(null)
 
 const Tabs = React.forwardRef<
     HTMLDivElement,
-    React.HTMLAttributes<HTMLDivElement> & { defaultValue: string; value?: string; onValueChange?: (value: string) => void }
+    React.HTMLAttributes<HTMLDivElement> & { defaultValue?: string; value?: string; onValueChange?: (value: string) => void }
 >(({ className, defaultValue, value: controlledValue, onValueChange: controlledOnValueChange, children, ...props }, ref) => {
     const [uncontrolledValue, setUncontrolledValue] = React.useState(defaultValue)
     const value = controlledValue ?? uncontrolledValue
