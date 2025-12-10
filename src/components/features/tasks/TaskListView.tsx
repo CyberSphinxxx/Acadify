@@ -1,21 +1,23 @@
 import type { Task, TaskPriority } from '@/types/task';
-import { format, isToday, isThisWeek, isPast, isFuture } from 'date-fns';
+import { format, isToday, isThisWeek, isPast, isFuture, isValid } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { taskService } from '@/services/taskService';
-import { Calendar, Circle } from 'lucide-react';
+import { Calendar, Circle, Trash2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface TaskListViewProps {
     tasks: Task[];
+    onDelete: (id: string) => void;
 }
 
-export function TaskListView({ tasks }: TaskListViewProps) {
+export function TaskListView({ tasks, onDelete }: TaskListViewProps) {
     // Group tasks
     const groups = {
-        Overdue: tasks.filter(t => t.dueDate && isPast(t.dueDate) && !isToday(t.dueDate) && t.status !== 'DONE'),
-        Today: tasks.filter(t => t.dueDate && isToday(t.dueDate) && t.status !== 'DONE'),
-        'This Week': tasks.filter(t => t.dueDate && isThisWeek(t.dueDate) && !isToday(t.dueDate) && !isPast(t.dueDate) && t.status !== 'DONE'),
-        Later: tasks.filter(t => (!t.dueDate || (isFuture(t.dueDate) && !isThisWeek(t.dueDate))) && t.status !== 'DONE'),
+        Overdue: tasks.filter(t => t.dueDate && isValid(t.dueDate) && isPast(t.dueDate) && !isToday(t.dueDate) && t.status !== 'DONE'),
+        Today: tasks.filter(t => t.dueDate && isValid(t.dueDate) && isToday(t.dueDate) && t.status !== 'DONE'),
+        'This Week': tasks.filter(t => t.dueDate && isValid(t.dueDate) && isThisWeek(t.dueDate) && !isToday(t.dueDate) && !isPast(t.dueDate) && t.status !== 'DONE'),
+        Later: tasks.filter(t => (!t.dueDate || (isValid(t.dueDate) && isFuture(t.dueDate) && !isThisWeek(t.dueDate))) && t.status !== 'DONE'),
         Completed: tasks.filter(t => t.status === 'DONE')
     };
 
@@ -69,7 +71,7 @@ export function TaskListView({ tasks }: TaskListViewProps) {
                                             {task.priority}
                                         </Badge>
 
-                                        {task.dueDate && (
+                                        {task.dueDate && isValid(task.dueDate) && (
                                             <div className={cn(
                                                 "text-xs flex items-center gap-1",
                                                 isPast(task.dueDate) && !isToday(task.dueDate) && task.status !== 'DONE' ? "text-red-500 font-medium" : "text-muted-foreground"
@@ -78,6 +80,15 @@ export function TaskListView({ tasks }: TaskListViewProps) {
                                                 {format(task.dueDate, 'MMM d')}
                                             </div>
                                         )}
+
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
+                                            onClick={() => onDelete(task.id)}
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </Button>
                                     </div>
                                 </div>
                             ))}
