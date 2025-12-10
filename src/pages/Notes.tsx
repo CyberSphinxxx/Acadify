@@ -50,6 +50,8 @@ export default function Notes() {
 
     if (!user) return null;
 
+    const uniqueFolders = Array.from(new Set(notes.map(n => n.folder).filter(Boolean))) as string[];
+
     return (
         <div className="flex h-[calc(100vh-3.5rem)] bg-background">
             {/* Desktop Sidebar */}
@@ -59,6 +61,7 @@ export default function Notes() {
                     selectedNoteId={selectedNoteId}
                     onSelectNote={handleSelectNote}
                     userId={user.uid}
+                    folders={uniqueFolders}
                 />
             </div>
 
@@ -70,6 +73,7 @@ export default function Notes() {
                         selectedNoteId={selectedNoteId}
                         onSelectNote={handleSelectNote}
                         userId={user.uid}
+                        folders={uniqueFolders}
                     />
                 </SheetContent>
             </Sheet>
@@ -85,7 +89,7 @@ export default function Notes() {
                 </div>
 
                 {selectedNote ? (
-                    <NoteEditor note={selectedNote} />
+                    <NoteEditor note={selectedNote} availableFolders={uniqueFolders} />
                 ) : (
                     <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-muted/5 p-8 text-center">
                         <div className="bg-muted/20 p-4 rounded-full mb-4">
