@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
-import { GraduationCap } from "lucide-react";
 
 export default function LandingPage() {
     const { user } = useAuth();
@@ -21,7 +20,7 @@ export default function LandingPage() {
             <header className="border-b">
                 <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-2 font-bold text-xl">
-                        <GraduationCap className="h-6 w-6 text-primary" />
+                        <img src="/acadify.svg" alt="Acadify Logo" className="h-8 w-8" />
                         <span>Acadify</span>
                     </div>
                     <nav>
