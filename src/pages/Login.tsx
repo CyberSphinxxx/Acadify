@@ -27,6 +27,9 @@ export default function Login() {
         <div className="flex items-center justify-center min-h-screen bg-muted/40 p-4">
             <Card className="w-full max-w-md">
                 <CardHeader className="text-center">
+                    <div className="flex justify-center mb-4">
+                        <img src="/acadify.svg" alt="Acadify Logo" className="h-12 w-12" />
+                    </div>
                     <CardTitle className="text-2xl font-bold">Welcome to Acadify</CardTitle>
                     <CardDescription>
                         Sign in to manage your academic life
