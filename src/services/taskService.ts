@@ -21,12 +21,14 @@ export const taskService = {
     // Add a new task
     addTask: async (task: Omit<Task, 'id'>) => {
         try {
-            const docRef = await addDoc(collection(db, TASKS_COLLECTION), {
+            const cleanTask = removeUndefined({
                 ...task,
                 // Ensure dates are stored as Timestamps
                 createdAt: Timestamp.fromDate(task.createdAt),
                 dueDate: task.dueDate ? Timestamp.fromDate(task.dueDate) : null
             });
+
+            const docRef = await addDoc(collection(db, TASKS_COLLECTION), cleanTask);
             return docRef.id;
         } catch (error) {
             console.error("Error adding task: ", error);

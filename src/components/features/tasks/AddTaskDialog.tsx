@@ -7,6 +7,7 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogDescription,
     DialogTrigger,
 } from '@/components/ui/dialog';
 import {
@@ -24,8 +25,15 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useState, useEffect } from 'react';
 import type { TaskPriority, TaskStatus } from '@/types/task';
-import { Plus } from 'lucide-react';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
+import { Calendar } from '@/components/ui/calendar';
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/components/ui/popover';
+import { Calendar as CalendarIcon, Plus } from 'lucide-react';
 
 const formSchema = z.object({
     title: z.string().min(1, 'Title is required'),
@@ -106,6 +114,9 @@ export function AddTaskDialog({ open: controlledOpen, onOpenChange: setControlle
         }
     };
 
+    // Deduplicate classes by subject for the dropdown
+    const uniqueClasses = Array.from(new Map(classes.map(cls => [cls.subject, cls])).values());
+
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             {setControlledOpen === undefined && (
@@ -116,6 +127,9 @@ export function AddTaskDialog({ open: controlledOpen, onOpenChange: setControlle
             <DialogContent className="sm:max-w-[425px] overflow-y-auto max-h-[90vh]">
                 <DialogHeader>
                     <DialogTitle>Add New Task</DialogTitle>
+                    <DialogDescription>
+                        Create a new task to track your academic progress.
+                    </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
@@ -199,9 +213,37 @@ export function AddTaskDialog({ open: controlledOpen, onOpenChange: setControlle
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Due Date</FormLabel>
-                                        <FormControl>
-                                            <Input type="date" {...field} />
-                                        </FormControl>
+                                        <Popover>
+                                            <PopoverTrigger asChild>
+                                                <FormControl>
+                                                    <Button
+                                                        variant={"outline"}
+                                                        className={cn(
+                                                            "w-full pl-3 text-left font-normal",
+                                                            !field.value && "text-muted-foreground"
+                                                        )}
+                                                    >
+                                                        {field.value ? (
+                                                            format(new Date(field.value), "PPP")
+                                                        ) : (
+                                                            <span>Pick a date</span>
+                                                        )}
+                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                                    </Button>
+                                                </FormControl>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-auto p-0" align="start">
+                                                <Calendar
+                                                    mode="single"
+                                                    selected={field.value ? new Date(field.value) : undefined}
+                                                    onSelect={(date) => field.onChange(date ? format(date, 'yyyy-MM-dd') : '')}
+                                                    disabled={(date) =>
+                                                        date < new Date("1900-01-01")
+                                                    }
+                                                    initialFocus
+                                                />
+                                            </PopoverContent>
+                                        </Popover>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -220,7 +262,7 @@ export function AddTaskDialog({ open: controlledOpen, onOpenChange: setControlle
                                             </FormControl>
                                             <SelectContent>
                                                 <SelectItem value="none">None</SelectItem>
-                                                {classes.map(cls => (
+                                                {uniqueClasses.map(cls => (
                                                     <SelectItem key={cls.id} value={cls.id}>
                                                         {cls.subject}
                                                     </SelectItem>
