@@ -24,13 +24,9 @@ export default function LandingPage() {
                         <span>Acadify</span>
                     </div>
                     <nav>
-                        {user ? (
+                        {user && (
                             <Button variant="ghost" onClick={() => navigate("/dashboard")}>
                                 Dashboard
-                            </Button>
-                        ) : (
-                            <Button variant="ghost" onClick={() => navigate("/login")}>
-                                Login
                             </Button>
                         )}
                     </nav>
