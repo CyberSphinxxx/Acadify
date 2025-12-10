@@ -1,5 +1,5 @@
 import { generateICS } from '@/lib/icsGenerator';
-import { Loader2, Download } from 'lucide-react';
+import { Loader2, Download, List, Calendar as CalendarIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SemesterSettingsDialog } from '@/components/features/schedule/SemesterSettingsDialog';
 import { useEffect, useState } from 'react';
@@ -8,11 +8,23 @@ import { scheduleService } from '@/services/scheduleService';
 import type { ClassSession } from '@/types/schedule';
 import { ScheduleGrid } from '@/components/features/schedule/ScheduleGrid';
 import { AddClassDialog } from '@/components/features/schedule/AddClassDialog';
+import { SubjectList } from '@/components/features/schedule/SubjectList';
+import { EditClassDialog } from '@/components/features/schedule/EditClassDialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { toast } from 'sonner';
 
 export default function Schedule() {
     const { user } = useAuth();
     const [classes, setClasses] = useState<ClassSession[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Edit Dialog State
+    const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [editingCourse, setEditingCourse] = useState<{
+        subject: string;
+        code: string;
+        sessions: ClassSession[];
+    } | null>(null);
 
     useEffect(() => {
         if (user?.uid) {
@@ -27,6 +39,7 @@ export default function Schedule() {
             setClasses(data);
         } catch (error) {
             console.error("Failed to load classes", error);
+            toast.error("Failed to load schedule");
         } finally {
             setLoading(false);
         }
@@ -35,22 +48,135 @@ export default function Schedule() {
     const handleAddClass = async (data: any) => {
         if (!user) return;
         try {
-            await scheduleService.addClass(user.uid, {
-                ...data,
-                dayOfWeek: parseInt(data.dayOfWeek) as 0 | 1 | 2 | 3 | 4 | 5 | 6,
-            });
-            loadClasses();
+            // Check if sessions is array
+            if (!data.sessions || !Array.isArray(data.sessions)) {
+                toast.error("Invalid class data");
+                return;
+            }
+
+            const classesToAdd = data.sessions.map((session: any) => ({
+                userId: user.uid,
+                subject: data.subject,
+                code: data.code,
+                instructor: data.instructor,
+                color: data.color,
+                dayOfWeek: parseInt(session.dayOfWeek),
+                startTime: session.startTime,
+                endTime: session.endTime,
+                room: session.room
+            }));
+
+            await scheduleService.batchAddClasses(user.uid, classesToAdd);
+            await loadClasses();
+            toast.success("Class added successfully");
         } catch (error) {
             console.error("Failed to add class", error);
+            toast.error("Failed to add class");
         }
     };
 
     const handleDeleteClass = async (classId: string) => {
         try {
             await scheduleService.deleteClass(classId);
-            setClasses(classes.filter(c => c.id !== classId));
+            setClasses(prev => prev.filter(c => c.id !== classId));
+            toast.success("Class session deleted");
         } catch (error) {
             console.error("Failed to delete class", error);
+            toast.error("Failed to delete class session");
+        }
+    };
+
+    const handleDeleteCourse = async (subject: string, code: string) => {
+        try {
+            const classesToDelete = classes.filter(c => c.subject === subject && c.code === code);
+            const idsToDelete = classesToDelete.map(c => c.id);
+            if (idsToDelete.length > 0) {
+                await scheduleService.batchDeleteClasses(idsToDelete);
+                setClasses(prev => prev.filter(c => !(c.subject === subject && c.code === code)));
+                toast.success(`Deleted all sessions for ${subject}`);
+            }
+        } catch (error) {
+            console.error("Failed to delete course", error);
+            toast.error("Failed to delete course");
+        }
+    };
+
+    const handleEditClass = (session: ClassSession) => {
+        // Find all sessions for this course
+        const courseSessions = classes.filter(c => c.subject === session.subject && c.code === session.code);
+        setEditingCourse({
+            subject: session.subject,
+            code: session.code,
+            sessions: courseSessions
+        });
+        setEditDialogOpen(true);
+    };
+
+    const handleEditCourseFromList = (course: { subject: string; code: string; sessions: ClassSession[] }) => {
+        setEditingCourse(course);
+        setEditDialogOpen(true);
+    };
+
+    const handleSaveCourse = async (data: any, initialSessions: ClassSession[]) => {
+        if (!user) return;
+        try {
+            const courseSubject = data.subject;
+            const courseCode = data.code;
+            const courseColor = data.color;
+            const courseInstructor = data.instructor;
+
+            const existingIds = new Set(initialSessions.map(s => s.id));
+            const keptIds = new Set<string>();
+
+            const sessionsToUpdate: any[] = [];
+            const sessionsToAdd: any[] = [];
+
+            data.sessions.forEach((session: any) => {
+                const sessionData = {
+                    userId: user.uid,
+                    subject: courseSubject,
+                    code: courseCode,
+                    instructor: courseInstructor,
+                    color: courseColor,
+                    dayOfWeek: parseInt(session.dayOfWeek),
+                    startTime: session.startTime,
+                    endTime: session.endTime,
+                    room: session.room
+                };
+
+                if (session.id && existingIds.has(session.id)) {
+                    sessionsToUpdate.push({ id: session.id, ...sessionData });
+                    keptIds.add(session.id);
+                } else {
+                    sessionsToAdd.push(sessionData);
+                }
+            });
+
+            const idsToDelete = initialSessions
+                .filter(s => !keptIds.has(s.id))
+                .map(s => s.id);
+
+            // Execute updates
+            const promises = [];
+
+            if (idsToDelete.length > 0) {
+                promises.push(scheduleService.batchDeleteClasses(idsToDelete));
+            }
+
+            if (sessionsToAdd.length > 0) {
+                promises.push(scheduleService.batchAddClasses(user.uid, sessionsToAdd));
+            }
+
+            sessionsToUpdate.forEach(s => {
+                promises.push(scheduleService.updateClass(s.id, s));
+            });
+
+            await Promise.all(promises);
+            await loadClasses();
+            toast.success("Course updated successfully");
+        } catch (error) {
+            console.error("Failed to update course", error);
+            toast.error("Failed to update course");
         }
     };
 
@@ -81,17 +207,49 @@ export default function Schedule() {
                 <h1 className="text-2xl font-bold">Class Schedule</h1>
                 <div className="flex items-center gap-2">
                     <SemesterSettingsDialog />
-                    <Button variant="outline" size="sm" onClick={handleExport} disabled={classes.length === 0}>
+                    <Button variant="outline" size="sm" onClick={handleExport} disabled={classes.length === 0} className="hidden sm:flex">
                         <Download className="w-4 h-4 mr-2" />
-                        Export Calendar
+                        Export
                     </Button>
                     <AddClassDialog onAddClass={handleAddClass} />
                 </div>
             </div>
 
-            <div className="flex-1 min-h-0">
-                <ScheduleGrid classes={classes} onDeleteClass={handleDeleteClass} />
-            </div>
+            <Tabs defaultValue="calendar" className="flex-1 flex flex-col min-h-0">
+                <div className="flex items-center justify-between mb-4">
+                    <TabsList>
+                        <TabsTrigger value="calendar" className="flex items-center gap-2">
+                            <CalendarIcon className="h-4 w-4" /> Calendar
+                        </TabsTrigger>
+                        <TabsTrigger value="list" className="flex items-center gap-2">
+                            <List className="h-4 w-4" /> Subjects
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
+
+                <TabsContent value="calendar" className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden h-full">
+                    <ScheduleGrid
+                        classes={classes}
+                        onDeleteClass={handleDeleteClass}
+                        onEditClass={handleEditClass}
+                    />
+                </TabsContent>
+
+                <TabsContent value="list" className="flex-1 min-h-0 mt-0 data-[state=inactive]:hidden overflow-y-auto">
+                    <SubjectList
+                        classes={classes}
+                        onEdit={handleEditCourseFromList}
+                        onDelete={handleDeleteCourse}
+                    />
+                </TabsContent>
+            </Tabs>
+
+            <EditClassDialog
+                open={editDialogOpen}
+                onOpenChange={setEditDialogOpen}
+                course={editingCourse}
+                onSave={handleSaveCourse}
+            />
         </div>
     )
 }
