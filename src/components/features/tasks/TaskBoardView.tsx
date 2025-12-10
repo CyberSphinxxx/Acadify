@@ -23,6 +23,7 @@ import { createPortal } from 'react-dom';
 
 interface TaskBoardViewProps {
     tasks: Task[];
+    onDelete: (id: string) => void;
 }
 
 const dropAnimation: DropAnimation = {
@@ -35,7 +36,7 @@ const dropAnimation: DropAnimation = {
     }),
 };
 
-export function TaskBoardView({ tasks }: TaskBoardViewProps) {
+export function TaskBoardView({ tasks, onDelete }: TaskBoardViewProps) {
     const [activeId, setActiveId] = useState<string | null>(null);
 
     const columns: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE'];
@@ -119,6 +120,7 @@ export function TaskBoardView({ tasks }: TaskBoardViewProps) {
                             id={status}
                             title={status.replace('_', ' ')}
                             tasks={tasksByStatus[status]}
+                            onDelete={onDelete}
                         />
                     </div>
                 ))}
@@ -126,7 +128,7 @@ export function TaskBoardView({ tasks }: TaskBoardViewProps) {
 
             {createPortal(
                 <DragOverlay dropAnimation={dropAnimation}>
-                    {activeTask ? <TaskCard task={activeTask} /> : null}
+                    {activeTask ? <TaskCard task={activeTask} onDelete={onDelete} /> : null}
                 </DragOverlay>,
                 document.body
             )}
