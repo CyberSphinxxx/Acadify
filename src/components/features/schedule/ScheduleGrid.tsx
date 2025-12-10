@@ -8,10 +8,24 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Button } from '@/components/ui/button';
 import { CurrentTimeIndicator } from './CurrentTimeIndicator';
+import { Card } from "@/components/ui/card";
+import { Edit, MapPin, User, Clock } from "lucide-react";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface ScheduleGridProps {
     classes: ClassSession[];
     onDeleteClass: (classId: string) => void;
+    onEditClass: (classSession: ClassSession) => void;
 }
 
 const START_HOUR = 7; // 7 AM
@@ -26,7 +40,7 @@ interface PositionedClass extends ClassSession {
     zIndex: number;
 }
 
-export function ScheduleGrid({ classes, onDeleteClass }: ScheduleGridProps) {
+export function ScheduleGrid({ classes, onDeleteClass, onEditClass }: ScheduleGridProps) {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const { currentSemester, addHoliday, removeHoliday } = useScheduleStore();
 
@@ -211,6 +225,7 @@ export function ScheduleGrid({ classes, onDeleteClass }: ScheduleGridProps) {
                                                         width: `${session.width}%`,
                                                         backgroundColor: `${session.color}20`,
                                                         borderLeftColor: session.color,
+                                                        zIndex: session.zIndex,
                                                     }}
                                                 >
                                                     <div className="font-bold truncate">{session.code}</div>
@@ -240,17 +255,38 @@ export function ScheduleGrid({ classes, onDeleteClass }: ScheduleGridProps) {
                                                     </div>
                                                 </div>
                                                 <div className="p-2 bg-muted/30 border-t flex justify-end gap-2">
-                                                    <Button variant="ghost" size="sm" className="h-8 gap-2 hover:text-primary">
+                                                    <Button variant="ghost" size="sm" className="h-8 gap-2 hover:text-primary" onClick={() => onEditClass(session)}>
                                                         <Pencil className="w-3.5 h-3.5" /> Edit
                                                     </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-8 gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                        onClick={() => onDeleteClass(session.id)}
-                                                    >
-                                                        <Trash2 className="w-3.5 h-3.5" /> Delete
-                                                    </Button>
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                className="h-8 gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" /> Delete
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Delete Class</AlertDialogTitle>
+                                                                <AlertDialogDescription>
+                                                                    Are you sure you want to delete this session of {session.subject}?
+                                                                    To delete the entire course, use the list view.
+                                                                </AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                <AlertDialogAction
+                                                                    onClick={() => onDeleteClass(session.id)}
+                                                                    className="bg-destructive hover:bg-destructive/90"
+                                                                >
+                                                                    Delete
+                                                                </AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
                                                 </div>
                                             </HoverCardContent>
                                         </HoverCard>
