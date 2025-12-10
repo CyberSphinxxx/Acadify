@@ -1,3 +1,4 @@
+
 import {
     collection,
     addDoc,
@@ -42,14 +43,20 @@ export const taskService = {
         );
 
         return onSnapshot(q, (snapshot) => {
+            const parseDate = (date: any) => {
+                if (!date) return undefined;
+                const d = date.toDate ? date.toDate() : new Date(date);
+                return !isNaN(d.getTime()) ? d : undefined;
+            };
+
             const tasks = snapshot.docs.map(doc => {
                 const data = doc.data();
                 return {
                     id: doc.id,
                     ...data,
                     // Convert Timestamps back to JS Dates
-                    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : (data.createdAt ? new Date(data.createdAt) : new Date()),
-                    dueDate: data.dueDate?.toDate ? data.dueDate.toDate() : (data.dueDate ? new Date(data.dueDate) : undefined)
+                    createdAt: parseDate(data.createdAt) || new Date(),
+                    dueDate: parseDate(data.dueDate)
                 } as Task;
             });
             callback(tasks);
