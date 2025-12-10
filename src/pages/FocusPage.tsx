@@ -22,7 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format, setHours, setMinutes, startOfDay, isValid } from 'date-fns';
-import { Plus, Calendar as CalendarIcon, CheckCircle2, ChevronLeft, Target, Trash2, Clock, Link as LinkIcon, FileText, ArrowLeft, ExternalLink, Menu, Layout, LogOut } from 'lucide-react';
+import { Plus, Calendar as CalendarIcon, CheckCircle2, ChevronLeft, Target, Trash2, Clock, Link as LinkIcon, FileText, ArrowLeft, ExternalLink, Menu, LogOut } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
@@ -288,16 +288,7 @@ export default function FocusPage() {
 
     // --- EXIT ACTIONS ---
 
-    const handleEndFocus = async () => {
-        if (!activeTask) return;
-        // Pause timer before ending focus
-        await pauseTimer(activeTask);
 
-        // Don't toggle session off, just exit view
-        setActiveTaskId(null);
-        setViewMode('list');
-        setActiveNoteId(null);
-    };
 
     const handleMarkDone = async () => {
         if (!activeTask) return;
