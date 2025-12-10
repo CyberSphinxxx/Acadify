@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
     Bold, Italic, Heading1, Heading2,
-    Pin, Tag, BookOpen, Clock, MoreVertical, Trash2
+    Pin, Tag, BookOpen, Clock, MoreVertical, Trash2, Folder
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { Note } from '@/types/note';
@@ -25,12 +25,14 @@ import { format, isValid } from 'date-fns';
 
 interface NoteEditorProps {
     note: Note;
+    availableFolders?: string[];
 }
 
-export function NoteEditor({ note }: NoteEditorProps) {
+export function NoteEditor({ note, availableFolders = [] }: NoteEditorProps) {
     const [isSaving, setIsSaving] = useState(false);
     const [title, setTitle] = useState(note.title);
     const [tagInput, setTagInput] = useState('');
+    const [newFolderInput, setNewFolderInput] = useState(''); // For creating new folder
 
     const { classes } = useScheduleStore();
 
@@ -42,6 +44,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
             }),
         ],
         content: note.content,
+        // ... rest of editor config
         editorProps: {
             attributes: {
                 class: 'prose prose-sm sm:prose lg:prose-lg xl:prose-2xl mx-auto focus:outline-none min-h-[500px] p-8',
@@ -52,6 +55,7 @@ export function NoteEditor({ note }: NoteEditorProps) {
         },
     });
 
+    // ... (keep usage of useEffect, useRef etc)
     // Sync local state when note prop changes
     useEffect(() => {
         setTitle(note.title);
@@ -70,7 +74,6 @@ export function NoteEditor({ note }: NoteEditorProps) {
 
         saveTimeoutRef.current = setTimeout(async () => {
             try {
-                // Ensure optional fields are handled safely by noteService
                 await noteService.updateNote(note.id, updates);
             } catch (error) {
                 console.error("Auto-save failed", error);
@@ -88,13 +91,23 @@ export function NoteEditor({ note }: NoteEditorProps) {
 
     const togglePin = () => {
         handleSave({ isPinned: !note.isPinned });
-        // Optimistic update for UI assumed handled by subscription or fast refresh
     };
 
     const handleClassSelect = (classId: string) => {
-        // Explicitly use null for 'none' to satisfy Firestore requirements (though service handles it)
         handleSave({ relatedClassId: classId === 'none' ? null : classId });
     };
+
+    const handleFolderSelect = (folderName: string | null) => {
+        handleSave({ folder: folderName });
+    };
+
+    const handleCreateFolder = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && newFolderInput.trim()) {
+            e.preventDefault();
+            handleSave({ folder: newFolderInput.trim() });
+            setNewFolderInput('');
+        }
+    }
 
     const handleAddTag = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && tagInput.trim()) {
@@ -170,6 +183,42 @@ export function NoteEditor({ note }: NoteEditorProps) {
                         <Pin className={cn("w-3.5 h-3.5", note.isPinned && "fill-current")} />
                         {note.isPinned ? 'Pinned' : 'Pin'}
                     </Button>
+
+                    <div className="h-4 w-px bg-border" />
+
+                    {/* Folder Selection */}
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className={cn("h-7 px-2 gap-1.5", note.folder && "text-primary bg-primary/10")}>
+                                <Folder className={cn("w-3.5 h-3.5", note.folder && "fill-current")} />
+                                {note.folder || 'No Folder'}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-56" align="start">
+                            <DropdownMenuLabel>Move to Folder</DropdownMenuLabel>
+                            <div className="px-2 py-1.5">
+                                <Input
+                                    placeholder="New folder name..."
+                                    className="h-8 text-xs"
+                                    value={newFolderInput}
+                                    onChange={(e) => setNewFolderInput(e.target.value)}
+                                    onKeyDown={handleCreateFolder}
+                                    onClick={(e) => e.stopPropagation()}
+                                />
+                            </div>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleFolderSelect(null)}>
+                                <span className="italic text-muted-foreground">None</span>
+                            </DropdownMenuItem>
+                            {availableFolders.map(folder => (
+                                <DropdownMenuItem key={folder} onClick={() => handleFolderSelect(folder)}>
+                                    <Folder className="w-3 h-3 mr-2" />
+                                    {folder}
+                                    {note.folder === folder && <span className="ml-auto text-primary">✓</span>}
+                                </DropdownMenuItem>
+                            ))}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
 
                     <div className="h-4 w-px bg-border" />
 
