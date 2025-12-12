@@ -13,8 +13,8 @@ import { StatCard } from '@/components/features/dashboard/StatCard';
 import { CheckCircle2, FileText, TrendingUp, LogOut, User as UserIcon } from 'lucide-react';
 import { taskService } from '@/services/taskService';
 import { noteService } from '@/services/noteService';
+import { userService } from '@/services/userService';
 
-import { calculateStreak } from '@/lib/dashboardUtils';
 import type { Task } from '@/types/task';
 import type { Note } from '@/types/note';
 
@@ -68,17 +68,26 @@ export default function ProfilePage() {
         const completedTasks = tasks.filter(t => t.status === 'DONE').length;
         const totalNotes = notes.length;
 
-        // Collect all activity dates
-        const activityDates = [
-            ...tasks.map(t => new Date(t.createdAt)), // Task creation
-            ...notes.map(n => new Date(n.updatedAt || n.createdAt)) // Note updates/creation
-        ];
+        // Sync streak to Firebase
+        // Centralized logic: We do NOT calculate locally. We ask userService to do the heavy lifting and sync DB.
+        const syncToFirebase = async () => {
+            if (!user) return;
+            // Even if no local items, we should check if there's stored global streak (though unlikely if 0 items)
+            // But to be safe, if we have data, we sync.
+            if (tasks.length > 0 || notes.length > 0) {
+                const syncedStreak = await userService.syncStreak(user.uid, tasks, notes);
+                setStats(prev => ({ ...prev, completedTasks, totalNotes, studyStreak: syncedStreak }));
+            } else {
+                // Fallback: Fetch what's in DB if we have no local data loaded yet? 
+                // Or just trust 0? Let's fetch profile to be sure.
+                const profile = await userService.getUserProfile(user.uid);
+                setStats(prev => ({ ...prev, completedTasks, totalNotes, studyStreak: profile?.studyStreak || 0 }));
+            }
+        };
 
-        const studyStreak = calculateStreak(activityDates);
+        syncToFirebase();
 
-        setStats({ completedTasks, totalNotes, studyStreak });
-
-    }, [rawData]);
+    }, [rawData, user]);
 
     const handleUpdateProfile = async (e: React.FormEvent) => {
         e.preventDefault();
