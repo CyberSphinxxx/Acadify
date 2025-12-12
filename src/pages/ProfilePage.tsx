@@ -21,16 +21,25 @@ import {
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { StatCard } from '@/components/features/dashboard/StatCard';
-import { CheckCircle2, FileText, TrendingUp, LogOut, User as UserIcon, Trash2, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, FileText, TrendingUp, LogOut, User as UserIcon, Trash2, AlertTriangle, Moon, Sun, Laptop } from 'lucide-react';
 import { taskService } from '@/services/taskService';
 import { noteService } from '@/services/noteService';
 import { userService } from '@/services/userService';
+import { useTheme } from "@/components/theme-provider"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
 
 import type { Task } from '@/types/task';
 import type { Note } from '@/types/note';
 
 export default function ProfilePage() {
     const { user, logout } = useAuth();
+    const { theme, setTheme } = useTheme();
     const navigate = useNavigate();
     const [displayName, setDisplayName] = useState(user?.displayName || '');
 
@@ -188,6 +197,40 @@ export default function ProfilePage() {
                                     </div>
                                 </div>
                             </form>
+
+                            <div className="space-y-2 pt-4 border-t">
+                                <Label>Appearance</Label>
+                                <div className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                                    <div className="flex items-center gap-2 text-muted-foreground">
+                                        {theme === 'light' && <Sun className="h-4 w-4" />}
+                                        {theme === 'dark' && <Moon className="h-4 w-4" />}
+                                        {theme === 'system' && <Laptop className="h-4 w-4" />}
+                                        <span className="text-sm font-medium text-foreground capitalize">{theme} Mode</span>
+                                    </div>
+                                    <Select value={theme} onValueChange={(value: any) => setTheme(value)}>
+                                        <SelectTrigger className="w-[140px]">
+                                            <SelectValue placeholder="Select theme" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="light">
+                                                <div className="flex items-center gap-2">
+                                                    <Sun className="h-4 w-4" /> Light
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="dark">
+                                                <div className="flex items-center gap-2">
+                                                    <Moon className="h-4 w-4" /> Dark
+                                                </div>
+                                            </SelectItem>
+                                            <SelectItem value="system">
+                                                <div className="flex items-center gap-2">
+                                                    <Laptop className="h-4 w-4" /> System
+                                                </div>
+                                            </SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
 
                             <div className="space-y-2 pt-4 border-t">
                                 <Label>Password</Label>

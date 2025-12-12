@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.5] - 2025-12-13
+
+### Added
+- **Dark Mode**: Implemented full dark mode support with a system-aware theme toggle in Profile Settings.
+
 ## [1.8.4] - 2025-12-13
 
 ### Added
