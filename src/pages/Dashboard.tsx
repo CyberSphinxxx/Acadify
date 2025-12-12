@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { onSnapshot, doc } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { useAuthStore } from '@/store/useAuthStore';
 import { scheduleService } from '@/services/scheduleService';
 import { taskService } from '@/services/taskService';
@@ -6,7 +8,7 @@ import type { ClassSession } from '@/types/schedule';
 import type { Task } from '@/types/task';
 import { getTodaysClasses, calculateFreeTime, getTasksDueToday } from '@/lib/dashboardUtils';
 import { StatCard } from '@/components/features/dashboard/StatCard';
-import { BookOpen, Clock, CalendarDays, CheckCircle } from 'lucide-react';
+import { BookOpen, Clock, CalendarDays, CheckCircle, TrendingUp } from 'lucide-react';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
@@ -14,6 +16,7 @@ export default function Dashboard() {
     const { user } = useAuthStore();
     const [classes, setClasses] = useState<ClassSession[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [streak, setStreak] = useState(0);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -31,10 +34,22 @@ export default function Dashboard() {
                     setTasks(allTasks);
                 });
 
+                // Real-time listener for streak updates
+                const unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+                    if (doc.exists()) {
+                        const data = doc.data();
+                        setStreak(data.studyStreak || 0);
+                    }
+                });
+
+                // Old fetch removed in favor of real-time
+                // const profile = await userService.getUserProfile(user.uid); ...
+
                 setLoading(false);
                 return () => {
                     unsubscribeClasses();
                     unsubscribeTasks();
+                    unsubscribeProfile();
                 };
             } catch (error) {
                 console.error("Error fetching dashboard data", error);
@@ -99,6 +114,12 @@ export default function Dashboard() {
                     value={tasks.filter(t => t.status !== 'DONE').length}
                     icon={CheckCircle}
                     description="Active tasks"
+                />
+                <StatCard
+                    title="Study Streak"
+                    value={`${streak} Days`}
+                    icon={TrendingUp}
+                    description="Keep it up!"
                 />
             </div>
 
