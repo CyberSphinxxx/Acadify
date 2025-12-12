@@ -36,6 +36,17 @@ export function NoteEditor({ note, availableFolders = [] }: NoteEditorProps) {
 
     const { classes } = useScheduleStore();
 
+    // Deduplicate classes by SUBJECT for the dropdown (to avoid multiple "Mobile Programming" entries)
+    // Similar to NotesSidebar logic
+    const uniqueClasses = classes.reduce((acc, current) => {
+        const x = acc.find(item => item.subject === current.subject);
+        if (!x) {
+            return acc.concat([current]);
+        } else {
+            return acc;
+        }
+    }, [] as typeof classes).sort((a, b) => a.subject.localeCompare(b.subject));
+
     const editor = useEditor({
         extensions: [
             StarterKit,
@@ -232,8 +243,7 @@ export function NoteEditor({ note, availableFolders = [] }: NoteEditorProps) {
                         <DropdownMenuContent>
                             <DropdownMenuLabel>Link to Class</DropdownMenuLabel>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleClassSelect('none')}>None</DropdownMenuItem>
-                            {classes.map(cls => (
+                            {uniqueClasses.map(cls => (
                                 <DropdownMenuItem key={cls.id} onClick={() => handleClassSelect(cls.id)}>
                                     {cls.subject}
                                 </DropdownMenuItem>
