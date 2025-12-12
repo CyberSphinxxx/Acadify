@@ -2,16 +2,19 @@ import type { Task, TaskPriority } from '@/types/task';
 import { format, isToday, isThisWeek, isPast, isFuture, isValid } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { taskService } from '@/services/taskService';
-import { Calendar, Circle, Trash2 } from 'lucide-react';
+import { Calendar, Circle, Trash2, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { AddTaskDialog } from './AddTaskDialog';
 
 interface TaskListViewProps {
     tasks: Task[];
     onDelete: (id: string) => void;
+    onUpdate: (id: string, updates: Partial<Task>) => Promise<void>;
 }
 
-export function TaskListView({ tasks, onDelete }: TaskListViewProps) {
+export function TaskListView({ tasks, onDelete, onUpdate }: TaskListViewProps) {
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
     // Group tasks
     const groups = {
         Overdue: tasks.filter(t => t.dueDate && isValid(t.dueDate) && isPast(t.dueDate) && !isToday(t.dueDate) && t.status !== 'DONE'),
@@ -23,7 +26,7 @@ export function TaskListView({ tasks, onDelete }: TaskListViewProps) {
 
     const toggleComplete = async (task: Task) => {
         const newStatus = task.status === 'DONE' ? 'TODO' : 'DONE';
-        await taskService.updateTaskStatus(task.id, newStatus);
+        await onUpdate(task.id, { status: newStatus });
     };
 
     const getPriorityColor = (priority: TaskPriority) => {
@@ -84,6 +87,14 @@ export function TaskListView({ tasks, onDelete }: TaskListViewProps) {
                                         <Button
                                             variant="ghost"
                                             size="icon"
+                                            className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary transition-opacity"
+                                            onClick={() => setEditingTask(task)}
+                                        >
+                                            <Edit2 className="w-3.5 h-3.5" />
+                                        </Button>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
                                             className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity"
                                             onClick={() => onDelete(task.id)}
                                         >
@@ -96,6 +107,13 @@ export function TaskListView({ tasks, onDelete }: TaskListViewProps) {
                     </div>
                 )
             ))}
+            {editingTask && (
+                <AddTaskDialog
+                    open={!!editingTask}
+                    onOpenChange={(open) => !open && setEditingTask(null)}
+                    taskToEdit={editingTask}
+                />
+            )}
         </div>
     );
 }
