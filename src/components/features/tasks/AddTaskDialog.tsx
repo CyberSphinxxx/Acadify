@@ -24,7 +24,7 @@ import { taskService } from '@/services/taskService';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useState, useEffect } from 'react';
-import type { TaskPriority, TaskStatus } from '@/types/task';
+import type { TaskPriority, TaskStatus, Task } from '@/types/task';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
@@ -50,9 +50,10 @@ interface AddTaskDialogProps {
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
     defaultDate?: Date;
+    taskToEdit?: Task | null;
 }
 
-export function AddTaskDialog({ open: controlledOpen, onOpenChange: setControlledOpen, defaultDate }: AddTaskDialogProps) {
+export function AddTaskDialog({ open: controlledOpen, onOpenChange: setControlledOpen, defaultDate, taskToEdit }: AddTaskDialogProps) {
     const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
     const open = controlledOpen ?? uncontrolledOpen;
     const setOpen = setControlledOpen ?? setUncontrolledOpen;
@@ -78,39 +79,67 @@ export function AddTaskDialog({ open: controlledOpen, onOpenChange: setControlle
         }
     }, [open, user, fetchClasses]);
 
+    // Reset form when taskToEdit changes or dialog opens
     useEffect(() => {
-        if (defaultDate) {
-            form.setValue('dueDate', format(defaultDate, 'yyyy-MM-dd'));
+        if (open) {
+            if (taskToEdit) {
+                form.reset({
+                    title: taskToEdit.title,
+                    description: taskToEdit.description || '',
+                    priority: taskToEdit.priority,
+                    status: taskToEdit.status,
+                    dueDate: taskToEdit.dueDate ? format(new Date(taskToEdit.dueDate), 'yyyy-MM-dd') : '',
+                    relatedClassId: taskToEdit.relatedClassId || 'none',
+                    isRecurring: taskToEdit.isRecurring,
+                    recurrencePattern: taskToEdit.recurrencePattern,
+                });
+            } else {
+                form.reset({
+                    title: '',
+                    description: '',
+                    priority: 'MEDIUM',
+                    status: 'TODO',
+                    dueDate: defaultDate ? format(defaultDate, 'yyyy-MM-dd') : '',
+                    relatedClassId: 'none',
+                    isRecurring: false,
+                });
+            }
         }
-    }, [defaultDate, form]);
+    }, [open, taskToEdit, form, defaultDate]);
 
     const onSubmit = async (values: z.infer<typeof formSchema>) => {
         if (!user) return;
 
         try {
-            await taskService.addTask({
-                userId: user.uid,
-                title: values.title,
-                description: values.description,
-                priority: values.priority as TaskPriority,
-                status: values.status as TaskStatus,
-                dueDate: values.dueDate ? new Date(values.dueDate) : undefined,
-                relatedClassId: values.relatedClassId === 'none' ? undefined : values.relatedClassId,
-                isRecurring: values.isRecurring,
-                recurrencePattern: values.recurrencePattern as 'DAILY' | 'WEEKLY' | 'MONTHLY' | undefined,
-                createdAt: new Date(),
-            });
+            if (taskToEdit) {
+                await taskService.updateTask(taskToEdit.id, {
+                    title: values.title,
+                    description: values.description,
+                    priority: values.priority as TaskPriority,
+                    status: values.status as TaskStatus,
+                    dueDate: values.dueDate ? new Date(values.dueDate) : undefined,
+                    relatedClassId: values.relatedClassId === 'none' ? undefined : values.relatedClassId,
+                    isRecurring: values.isRecurring,
+                    recurrencePattern: values.recurrencePattern as 'DAILY' | 'WEEKLY' | 'MONTHLY' | undefined,
+                });
+            } else {
+                await taskService.addTask({
+                    userId: user.uid,
+                    title: values.title,
+                    description: values.description,
+                    priority: values.priority as TaskPriority,
+                    status: values.status as TaskStatus,
+                    dueDate: values.dueDate ? new Date(values.dueDate) : undefined,
+                    relatedClassId: values.relatedClassId === 'none' ? undefined : values.relatedClassId,
+                    isRecurring: values.isRecurring,
+                    recurrencePattern: values.recurrencePattern as 'DAILY' | 'WEEKLY' | 'MONTHLY' | undefined,
+                    createdAt: new Date(),
+                });
+            }
             setOpen(false);
-            form.reset({
-                title: '',
-                description: '',
-                priority: 'MEDIUM',
-                status: 'TODO',
-                dueDate: '',
-                relatedClassId: 'none',
-            });
+            form.reset(); // Reset to defaults after submit
         } catch (error) {
-            console.error("Failed to add task", error);
+            console.error("Failed to save task", error);
         }
     };
 
@@ -119,16 +148,16 @@ export function AddTaskDialog({ open: controlledOpen, onOpenChange: setControlle
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            {setControlledOpen === undefined && (
+            {setControlledOpen === undefined && !taskToEdit && (
                 <DialogTrigger asChild>
                     <Button><Plus className="mr-2 h-4 w-4" /> Add Task</Button>
                 </DialogTrigger>
             )}
             <DialogContent className="sm:max-w-[425px] overflow-y-auto max-h-[90vh]">
                 <DialogHeader>
-                    <DialogTitle>Add New Task</DialogTitle>
+                    <DialogTitle>{taskToEdit ? 'Edit Task' : 'Add New Task'}</DialogTitle>
                     <DialogDescription>
-                        Create a new task to track your academic progress.
+                        {taskToEdit ? 'Update your task details.' : 'Create a new task to track your academic progress.'}
                     </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
