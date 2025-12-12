@@ -7,7 +7,9 @@ import {
     query,
     where,
     onSnapshot,
-    Timestamp
+    Timestamp,
+    writeBatch,
+    getDocs
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import type { Note } from '@/types/note';
@@ -17,7 +19,7 @@ const NOTES_COLLECTION = 'notes';
 
 export const noteService = {
     // Create a new blank note
-    createNote: async (userId: string, relatedTaskId?: string) => {
+    createNote: async (userId: string, relatedTaskId?: string, folderName?: string) => {
         try {
             const now = new Date();
             const docRef = await addDoc(collection(db, NOTES_COLLECTION), {
@@ -25,6 +27,7 @@ export const noteService = {
                 title: 'Untitled Note',
                 content: '',
                 relatedTaskId: relatedTaskId || null,
+                folder: folderName || null,
                 createdAt: Timestamp.fromDate(now),
                 updatedAt: Timestamp.fromDate(now)
             });
@@ -81,6 +84,60 @@ export const noteService = {
             await deleteDoc(doc(db, NOTES_COLLECTION, id));
         } catch (error) {
             console.error("Error deleting note: ", error);
+            throw error;
+        }
+    },
+
+    // Batch rename folder
+    renameFolder: async (userId: string, oldName: string, newName: string) => {
+        try {
+            const q = query(
+                collection(db, NOTES_COLLECTION),
+                where("userId", "==", userId),
+                where("folder", "==", oldName)
+            );
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) return;
+
+            const batch = writeBatch(db);
+            snapshot.docs.forEach(doc => {
+                batch.update(doc.ref, {
+                    folder: newName,
+                    updatedAt: Timestamp.fromDate(new Date())
+                });
+            });
+
+            await batch.commit();
+        } catch (error) {
+            console.error("Error renaming folder:", error);
+            throw error;
+        }
+    },
+
+    // Batch delete folder (ungroup notes)
+    deleteFolder: async (userId: string, folderName: string) => {
+        try {
+            const q = query(
+                collection(db, NOTES_COLLECTION),
+                where("userId", "==", userId),
+                where("folder", "==", folderName)
+            );
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) return;
+
+            const batch = writeBatch(db);
+            snapshot.docs.forEach(doc => {
+                batch.update(doc.ref, {
+                    folder: null,
+                    updatedAt: Timestamp.fromDate(new Date())
+                });
+            });
+
+            await batch.commit();
+        } catch (error) {
+            console.error("Error deleting folder:", error);
             throw error;
         }
     }
