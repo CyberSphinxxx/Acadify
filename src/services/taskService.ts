@@ -25,6 +25,7 @@ export const taskService = {
                 ...task,
                 // Ensure dates are stored as Timestamps
                 createdAt: Timestamp.fromDate(task.createdAt),
+                updatedAt: Timestamp.fromDate(new Date()),
                 dueDate: task.dueDate ? Timestamp.fromDate(task.dueDate) : null
             });
 
@@ -58,6 +59,7 @@ export const taskService = {
                     ...data,
                     // Convert Timestamps back to JS Dates
                     createdAt: parseDate(data.createdAt) || new Date(),
+                    updatedAt: parseDate(data.updatedAt),
                     dueDate: parseDate(data.dueDate)
                 } as Task;
             });
@@ -70,7 +72,10 @@ export const taskService = {
         try {
             const taskRef = doc(db, TASKS_COLLECTION, id);
             // Handle date conversions if necessary
-            const firestoreUpdates: any = { ...updates };
+            const firestoreUpdates: any = {
+                ...updates,
+                updatedAt: Timestamp.fromDate(new Date())
+            };
             if (updates.dueDate) {
                 firestoreUpdates.dueDate = Timestamp.fromDate(updates.dueDate);
             }
@@ -100,7 +105,10 @@ export const taskService = {
     updateTaskStatus: async (id: string, status: TaskStatus) => {
         try {
             const taskRef = doc(db, TASKS_COLLECTION, id);
-            await updateDoc(taskRef, { status });
+            await updateDoc(taskRef, {
+                status,
+                updatedAt: Timestamp.fromDate(new Date())
+            });
         } catch (error) {
             console.error("Error updating task status: ", error);
             throw error;
