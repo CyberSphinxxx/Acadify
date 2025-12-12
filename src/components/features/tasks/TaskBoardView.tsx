@@ -18,12 +18,14 @@ import type { Task, TaskStatus } from '@/types/task';
 import { TaskColumn } from './TaskColumn';
 import { TaskCard } from './TaskCard';
 import { useState, useMemo } from 'react';
-import { taskService } from '@/services/taskService';
 import { createPortal } from 'react-dom';
+
+import { AddTaskDialog } from './AddTaskDialog';
 
 interface TaskBoardViewProps {
     tasks: Task[];
     onDelete: (id: string) => void;
+    onUpdate: (id: string, updates: Partial<Task>) => Promise<void>;
 }
 
 const dropAnimation: DropAnimation = {
@@ -36,8 +38,9 @@ const dropAnimation: DropAnimation = {
     }),
 };
 
-export function TaskBoardView({ tasks, onDelete }: TaskBoardViewProps) {
+export function TaskBoardView({ tasks, onDelete, onUpdate }: TaskBoardViewProps) {
     const [activeId, setActiveId] = useState<string | null>(null);
+    const [editingTask, setEditingTask] = useState<Task | null>(null);
 
     const columns: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'DONE'];
 
@@ -95,9 +98,9 @@ export function TaskBoardView({ tasks, onDelete }: TaskBoardViewProps) {
         }
 
         if (newStatus && newStatus !== activeTask.status) {
-            // Update in Firestore
+            // Update via onUpdate prop
             try {
-                await taskService.updateTaskStatus(activeId, newStatus);
+                await onUpdate(activeId, { status: newStatus });
             } catch (error) {
                 console.error("Failed to move task", error);
             }
@@ -121,6 +124,8 @@ export function TaskBoardView({ tasks, onDelete }: TaskBoardViewProps) {
                             title={status.replace('_', ' ')}
                             tasks={tasksByStatus[status]}
                             onDelete={onDelete}
+                            onUpdate={onUpdate}
+                            onEdit={setEditingTask}
                         />
                     </div>
                 ))}
@@ -128,8 +133,25 @@ export function TaskBoardView({ tasks, onDelete }: TaskBoardViewProps) {
 
             {createPortal(
                 <DragOverlay dropAnimation={dropAnimation}>
-                    {activeTask ? <TaskCard task={activeTask} onDelete={onDelete} /> : null}
+                    {activeTask ? (
+                        <TaskCard
+                            task={activeTask}
+                            onDelete={onDelete}
+                            onUpdate={onUpdate}
+                            onEdit={setEditingTask}
+                        />
+                    ) : null}
                 </DragOverlay>,
+                document.body
+            )}
+            {createPortal(
+                editingTask && (
+                    <AddTaskDialog
+                        open={!!editingTask}
+                        onOpenChange={(open) => !open && setEditingTask(null)}
+                        taskToEdit={editingTask}
+                    />
+                ),
                 document.body
             )}
         </DndContext>
