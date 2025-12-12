@@ -20,6 +20,7 @@ const TASKS_COLLECTION = 'tasks';
 export const taskService = {
     // Add a new task
     addTask: async (task: Omit<Task, 'id'>) => {
+        console.log("taskService.addTask called with:", task);
         try {
             const cleanTask = removeUndefined({
                 ...task,
@@ -30,6 +31,7 @@ export const taskService = {
             });
 
             const docRef = await addDoc(collection(db, TASKS_COLLECTION), cleanTask);
+            console.log("taskService.addTask success, ID:", docRef.id);
             return docRef.id;
         } catch (error) {
             console.error("Error adding task: ", error);
@@ -39,6 +41,7 @@ export const taskService = {
 
     // Subscribe to tasks for a specific user
     subscribeToTasks: (userId: string, callback: (tasks: Task[]) => void) => {
+        console.log("taskService.subscribeToTasks initializing for user:", userId);
         const q = query(
             collection(db, TASKS_COLLECTION),
             where("userId", "==", userId)
@@ -46,6 +49,7 @@ export const taskService = {
         );
 
         return onSnapshot(q, (snapshot) => {
+            console.log("taskService.subscribeToTasks snapshot received. Docs count:", snapshot.docs.length);
             const parseDate = (date: any) => {
                 if (!date) return undefined;
                 const d = date.toDate ? date.toDate() : new Date(date);
@@ -63,12 +67,14 @@ export const taskService = {
                     dueDate: parseDate(data.dueDate)
                 } as Task;
             });
+            console.log("taskService.subscribeToTasks parsed tasks:", tasks);
             callback(tasks);
         });
     },
 
     // Update a task (e.g., status change, content edit)
     updateTask: async (id: string, updates: Partial<Task>) => {
+        console.log("taskService.updateTask called for ID:", id, "Updates:", updates);
         try {
             const taskRef = doc(db, TASKS_COLLECTION, id);
             // Handle date conversions if necessary
@@ -85,6 +91,7 @@ export const taskService = {
             const sanitizedUpdates = removeUndefined(firestoreUpdates);
 
             await updateDoc(taskRef, sanitizedUpdates);
+            console.log("taskService.updateTask success");
         } catch (error) {
             console.error("Error updating task: ", error);
             throw error;
@@ -93,8 +100,10 @@ export const taskService = {
 
     // Delete a task
     deleteTask: async (id: string) => {
+        console.log("taskService.deleteTask called for ID:", id);
         try {
             await deleteDoc(doc(db, TASKS_COLLECTION, id));
+            console.log("taskService.deleteTask success");
         } catch (error) {
             console.error("Error deleting task: ", error);
             throw error;
