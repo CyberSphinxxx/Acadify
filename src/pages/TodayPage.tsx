@@ -7,17 +7,24 @@ import { StatCard } from '@/components/dashboard/StatCard';
 import { TodayTimeline } from '@/components/dashboard/TodayTimeline';
 import { DueTodayList } from '@/components/dashboard/DueTodayList';
 import { Loader2, Calendar, AlertCircle, BookOpen, Flame } from 'lucide-react';
+import { userService } from '@/services/userService';
 
 export default function TodayPage() {
     const { user } = useAuthStore();
     const { classes, fetchClasses, loading: loadingSchedule } = useScheduleStore();
     const { tasks, fetchTasks, addTask, loading: loadingTasks } = useTaskStore();
     const [currentTime, setCurrentTime] = useState(new Date());
+    const [studyStreak, setStudyStreak] = useState(0);
 
     useEffect(() => {
         if (!user) return;
         fetchClasses(user.uid);
         fetchTasks(user.uid);
+
+        // Fetch streak
+        userService.getUserProfile(user.uid).then(profile => {
+            if (profile) setStudyStreak(profile.studyStreak);
+        });
 
         const timer = setInterval(() => setCurrentTime(new Date()), 60000);
         return () => clearInterval(timer);
@@ -115,7 +122,7 @@ export default function TodayPage() {
                     />
                     <StatCard
                         title="Study Streak"
-                        value="3 Days"
+                        value={`${studyStreak} Days`}
                         icon={Flame}
                         intent="success"
                         trend="Keep it up!"
