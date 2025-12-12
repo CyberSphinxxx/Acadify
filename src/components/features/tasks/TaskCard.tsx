@@ -6,15 +6,17 @@ import type { Task } from '@/types/task';
 import { format, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 
-import { Trash2 } from 'lucide-react';
+import { Trash2, Edit2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface TaskCardProps {
     task: Task;
     onDelete: (id: string) => void;
+    onUpdate?: (id: string, updates: Partial<Task>) => Promise<void>;
+    onEdit?: (task: Task) => void;
 }
 
-export function TaskCard({ task, onDelete }: TaskCardProps) {
+export function TaskCard({ task, onDelete, onEdit }: TaskCardProps) {
     const {
         attributes,
         listeners,
@@ -65,16 +67,27 @@ export function TaskCard({ task, onDelete }: TaskCardProps) {
                     )}
                 </CardContent>
 
-                {/* Delete Button (Visible on Hover) */}
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                {/* Actions (Visible on Hover) */}
+                <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {onEdit && (
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 text-muted-foreground hover:text-primary bg-background/50 backdrop-blur-sm"
+                            onPointerDown={(e) => e.stopPropagation()}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onEdit(task);
+                            }}
+                        >
+                            <Edit2 className="w-3.5 h-3.5" />
+                        </Button>
+                    )}
                     <Button
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 text-muted-foreground hover:text-destructive bg-background/50 backdrop-blur-sm"
-                        onPointerDown={(e) => {
-                            // Using onPointerDown to capture event before drag starts
-                            e.stopPropagation();
-                        }}
+                        onPointerDown={(e) => e.stopPropagation()}
                         onClick={(e) => {
                             e.stopPropagation();
                             onDelete(task.id);
