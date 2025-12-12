@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { taskService } from '@/services/taskService';
+import { useTaskStore } from '@/store/useTaskStore';
 import type { Task } from '@/types/task';
 import { TaskBoardView } from '@/components/features/tasks/TaskBoardView';
 import { TaskListView } from '@/components/features/tasks/TaskListView';
@@ -14,8 +14,7 @@ import { Loader2 } from 'lucide-react';
 
 export default function Tasks() {
     const { user } = useAuthStore();
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [loading, setLoading] = useState(true);
+    const { tasks, loading, fetchTasks, deleteTask, updateTask } = useTaskStore();
     const [view, setView] = useState<'list' | 'board' | 'calendar'>('list');
 
     // Filter & Search State
@@ -24,22 +23,24 @@ export default function Tasks() {
 
     useEffect(() => {
         if (!user) return;
-
-        const unsubscribe = taskService.subscribeToTasks(user.uid, (updatedTasks) => {
-            setTasks(updatedTasks);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, [user]);
+        fetchTasks(user.uid);
+    }, [user, fetchTasks]);
 
     const handleDeleteTask = async (taskId: string) => {
         if (confirm('Are you sure you want to delete this task?')) {
             try {
-                await taskService.deleteTask(taskId);
+                await deleteTask(taskId);
             } catch (error) {
                 console.error("Failed to delete task", error);
             }
+        }
+    };
+
+    const handleUpdateTask = async (taskId: string, updates: Partial<Task>) => {
+        try {
+            await updateTask(taskId, updates);
+        } catch (error) {
+            console.error("Failed to update task", error);
         }
     };
 
@@ -113,8 +114,8 @@ export default function Tasks() {
             </header>
 
             <div className="flex-1 overflow-hidden p-6">
-                {view === 'list' && <TaskListView tasks={filteredTasks} onDelete={handleDeleteTask} />}
-                {view === 'board' && <TaskBoardView tasks={filteredTasks} onDelete={handleDeleteTask} />}
+                {view === 'list' && <TaskListView tasks={filteredTasks} onDelete={handleDeleteTask} onUpdate={handleUpdateTask} />}
+                {view === 'board' && <TaskBoardView tasks={filteredTasks} onDelete={handleDeleteTask} onUpdate={handleUpdateTask} />}
                 {view === 'calendar' && <TaskCalendarView tasks={filteredTasks} />}
             </div>
         </div>
