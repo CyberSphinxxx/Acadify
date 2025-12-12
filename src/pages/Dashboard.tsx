@@ -22,48 +22,39 @@ export default function Dashboard() {
     useEffect(() => {
         if (!user) return;
 
-        const fetchData = async () => {
-            try {
-                // Subscribe to classes
-                const unsubscribeClasses = scheduleService.subscribeToClasses(user.uid, (allClasses) => {
-                    setClasses(allClasses);
-                });
+        let unsubscribeClasses: (() => void) | undefined;
+        let unsubscribeTasks: (() => void) | undefined;
+        let unsubscribeProfile: (() => void) | undefined;
 
-                // Subscribe to tasks
-                const unsubscribeTasks = taskService.subscribeToTasks(user.uid, (allTasks) => {
-                    setTasks(allTasks);
-                });
+        try {
+            // Subscribe to classes
+            unsubscribeClasses = scheduleService.subscribeToClasses(user.uid, (allClasses) => {
+                setClasses(allClasses);
+            });
 
-                // Real-time listener for streak updates
-                const unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), (doc) => {
-                    if (doc.exists()) {
-                        const data = doc.data();
-                        setStreak(data.studyStreak || 0);
-                    }
-                });
+            // Subscribe to tasks
+            unsubscribeTasks = taskService.subscribeToTasks(user.uid, (allTasks) => {
+                setTasks(allTasks);
+            });
 
-                // Old fetch removed in favor of real-time
-                // const profile = await userService.getUserProfile(user.uid); ...
+            // Real-time listener for streak updates
+            unsubscribeProfile = onSnapshot(doc(db, 'users', user.uid), (doc) => {
+                if (doc.exists()) {
+                    const data = doc.data();
+                    setStreak(data.studyStreak || 0);
+                }
+            });
 
-                setLoading(false);
-                return () => {
-                    unsubscribeClasses();
-                    unsubscribeTasks();
-                    unsubscribeProfile();
-                };
-            } catch (error) {
-                console.error("Error fetching dashboard data", error);
-                setLoading(false);
-            }
-        };
+            setLoading(false);
+        } catch (error) {
+            console.error("Error setting up dashboard listeners", error);
+            setLoading(false);
+        }
 
-        fetchData();
         return () => {
-            // Cleanup is handled inside fetchData's return if it was synchronous, 
-            // but here we have a slight async mismatch. 
-            // To be cleaner with React Query later, but for now this is "okay".
-            // Actually, the subscriptions are likely establishing distinct listeners.
-            // Let's refine this effect to be safer.
+            if (unsubscribeClasses) unsubscribeClasses();
+            if (unsubscribeTasks) unsubscribeTasks();
+            if (unsubscribeProfile) unsubscribeProfile();
         };
     }, [user]);
 
