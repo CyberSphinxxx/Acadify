@@ -32,4 +32,5 @@ export interface Task {
     accumulatedFocusTime?: number; // Total seconds spent previously
 
     createdAt: Date;
+    updatedAt?: Date;
 }
