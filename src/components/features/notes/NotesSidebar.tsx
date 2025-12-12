@@ -10,8 +10,30 @@ import {
     Clock,
     Filter,
     FileText,
-    Pin
+    Pin,
+    MoreVertical,
+    Pencil,
+    Trash
 } from 'lucide-react';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { formatDistanceToNow, isValid } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { noteService } from '@/services/noteService';
@@ -42,7 +64,31 @@ export function NotesSidebar({ notes, selectedNoteId, onSelectNote, userId, fold
     const [activeFolder, setActiveFolder] = useState<string | null>(null);
     const [isFoldersExpanded, setIsFoldersExpanded] = useState(true);
 
+    // Dialog states
+    const [isCreateFolderDialogOpen, setIsCreateFolderDialogOpen] = useState(false);
+    const [newFolderInput, setNewFolderInput] = useState('');
+
+    const [folderToRename, setFolderToRename] = useState<string | null>(null);
+    const [newFolderName, setNewFolderName] = useState('');
+    const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+
+    const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
     const { classes } = useScheduleStore();
+
+    // Deduplicate classes by SUBJECT for the dropdown (to avoid multiple "Mobile Programming" entries)
+    const uniqueClasses = useMemo(() => {
+        const subjects = new Set();
+        const unique: typeof classes = [];
+        classes.forEach(c => {
+            if (c.subject && !subjects.has(c.subject)) {
+                subjects.add(c.subject);
+                unique.push(c);
+            }
+        });
+        return unique.sort((a, b) => a.subject.localeCompare(b.subject));
+    }, [classes]);
 
     const handleCreateNote = async () => {
         try {
@@ -72,7 +118,11 @@ export function NotesSidebar({ notes, selectedNoteId, onSelectNote, userId, fold
 
         // Class filter
         if (classFilter !== 'all') {
-            result = result.filter(note => note.relatedClassId === classFilter);
+            result = result.filter(note => {
+                if (!note.relatedClassId) return false;
+                const originalClass = classes.find(c => c.id === note.relatedClassId);
+                return originalClass?.subject === classFilter;
+            });
         }
 
         // Drop pinned notes to top (if not already handled by parent sort, but safe to do here)
@@ -106,7 +156,7 @@ export function NotesSidebar({ notes, selectedNoteId, onSelectNote, userId, fold
                             <Button variant="outline" size="sm" className="flex-1 justify-between text-xs h-8">
                                 <span className="flex items-center gap-2">
                                     <Filter className="w-3 h-3" />
-                                    {classFilter === 'all' ? 'All Classes' : classes.find(c => c.id === classFilter)?.subject || 'Filtered'}
+                                    {classFilter === 'all' ? 'All Classes' : classFilter}
                                 </span>
                             </Button>
                         </DropdownMenuTrigger>
@@ -115,8 +165,8 @@ export function NotesSidebar({ notes, selectedNoteId, onSelectNote, userId, fold
                             <DropdownMenuSeparator />
                             <DropdownMenuRadioGroup value={classFilter} onValueChange={setClassFilter}>
                                 <DropdownMenuRadioItem value="all">All Classes</DropdownMenuRadioItem>
-                                {classes.map(cls => (
-                                    <DropdownMenuRadioItem key={cls.id} value={cls.id}>
+                                {uniqueClasses.map(cls => (
+                                    <DropdownMenuRadioItem key={cls.id} value={cls.subject}>
                                         {cls.subject}
                                     </DropdownMenuRadioItem>
                                 ))}
@@ -135,15 +185,26 @@ export function NotesSidebar({ notes, selectedNoteId, onSelectNote, userId, fold
                 {/* Folders Section */}
                 {folders.length > 0 && (
                     <div className="space-y-1">
-                        <button
-                            className="flex items-center justify-between w-full px-2 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider group hover:text-foreground transition-colors"
-                            onClick={() => setIsFoldersExpanded(!isFoldersExpanded)}
-                        >
-                            <span className="flex items-center gap-1">
+                        <div className="flex items-center justify-between w-full px-2 pb-1">
+                            <button
+                                className="flex items-center gap-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider group hover:text-foreground transition-colors"
+                                onClick={() => setIsFoldersExpanded(!isFoldersExpanded)}
+                            >
                                 <Folder className="w-3 h-3" /> Folders
-                            </span>
-                            {isFoldersExpanded ? <ChevronDown className="w-3 h-3 opacity-50" /> : <ChevronRight className="w-3 h-3 opacity-50" />}
-                        </button>
+                                {isFoldersExpanded ? <ChevronDown className="w-3 h-3 opacity-50" /> : <ChevronRight className="w-3 h-3 opacity-50" />}
+                            </button>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-4"
+                                onClick={() => {
+                                    setNewFolderInput('');
+                                    setIsCreateFolderDialogOpen(true);
+                                }}
+                            >
+                                <Plus className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                            </Button>
+                        </div>
 
                         {isFoldersExpanded && (
                             <div className="space-y-0.5 animate-in slide-in-from-top-1 duration-200">
@@ -157,22 +218,156 @@ export function NotesSidebar({ notes, selectedNoteId, onSelectNote, userId, fold
                                     <FileText className="w-3.5 h-3.5" /> All Notes
                                 </button>
                                 {folders.map(folder => (
-                                    <button
-                                        key={folder}
-                                        onClick={() => setActiveFolder(folder === activeFolder ? null : folder)}
-                                        className={cn(
-                                            "w-full text-left px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-2",
-                                            activeFolder === folder ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                                        )}
-                                    >
-                                        <Folder className={cn("w-3.5 h-3.5", activeFolder === folder && "fill-current")} />
-                                        {folder}
-                                    </button>
+                                    <div key={folder} className="group flex items-center gap-1 group/item">
+                                        <button
+                                            onClick={() => setActiveFolder(folder === activeFolder ? null : folder)}
+                                            className={cn(
+                                                "flex-1 text-left px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-2",
+                                                activeFolder === folder ? "bg-accent text-accent-foreground font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                                            )}
+                                        >
+                                            <Folder className={cn("w-3.5 h-3.5", activeFolder === folder && "fill-current")} />
+                                            <span className="truncate">{folder}</span>
+                                        </button>
+
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                                    <MoreVertical className="h-3 w-3" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuLabel>Folder Actions</DropdownMenuLabel>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuRadioItem
+                                                    value="rename"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setFolderToRename(folder);
+                                                        setNewFolderName(folder);
+                                                        setIsRenameDialogOpen(true);
+                                                    }}
+                                                >
+                                                    <Pencil className="w-3 h-3 mr-2" /> Rename
+                                                </DropdownMenuRadioItem>
+                                                <DropdownMenuRadioItem
+                                                    value="delete"
+                                                    className="text-destructive focus:text-destructive"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setFolderToDelete(folder);
+                                                        setIsDeleteDialogOpen(true);
+                                                    }}
+                                                >
+                                                    <Trash className="w-3 h-3 mr-2" /> Remove
+                                                </DropdownMenuRadioItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
                                 ))}
                             </div>
                         )}
                     </div>
                 )}
+
+                {/* Create Folder Dialog */}
+                <Dialog open={isCreateFolderDialogOpen} onOpenChange={setIsCreateFolderDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Create New Folder</DialogTitle>
+                            <DialogDescription>
+                                Enter a name for the new folder. This will create a new blank note inside it.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="new-folder-name">Folder Name</Label>
+                                <Input
+                                    id="new-folder-name"
+                                    value={newFolderInput}
+                                    onChange={(e) => setNewFolderInput(e.target.value)}
+                                    placeholder="My Project"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsCreateFolderDialogOpen(false)}>Cancel</Button>
+                            <Button onClick={async () => {
+                                if (newFolderInput.trim()) {
+                                    const folderName = newFolderInput.trim();
+                                    const newId = await noteService.createNote(userId, undefined, folderName);
+                                    setActiveFolder(folderName);
+                                    onSelectNote(newId);
+                                    setIsCreateFolderDialogOpen(false);
+                                }
+                            }}>Create Folder</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Rename Dialog */}
+                <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Rename Folder</DialogTitle>
+                            <DialogDescription>
+                                Enter a new name for the folder "{folderToRename}". All notes in this folder will be updated.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label htmlFor="name">Name</Label>
+                                <Input
+                                    id="name"
+                                    value={newFolderName}
+                                    onChange={(e) => setNewFolderName(e.target.value)}
+                                    placeholder="Folder Name"
+                                    autoFocus
+                                />
+                            </div>
+                        </div>
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsRenameDialogOpen(false)}>Cancel</Button>
+                            <Button onClick={async () => {
+                                if (folderToRename && newFolderName.trim() && newFolderName !== folderToRename) {
+                                    await noteService.renameFolder(userId, folderToRename, newFolderName.trim());
+                                    setIsRenameDialogOpen(false);
+                                    if (activeFolder === folderToRename) setActiveFolder(newFolderName.trim());
+                                }
+                            }}>Save Changes</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                {/* Delete Alert Dialog */}
+                <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Remove Folder?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Are you sure you want to remove "{folderToDelete}"?
+                                <br /><br />
+                                <strong>Notes inside this folder will NOT be deleted.</strong> They will be moved to "All Notes" (unorganized).
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={async () => {
+                                    if (folderToDelete) {
+                                        await noteService.deleteFolder(userId, folderToDelete);
+                                        if (activeFolder === folderToDelete) setActiveFolder(null);
+                                        setIsDeleteDialogOpen(false);
+                                    }
+                                }}
+                            >
+                                Remove Folder
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
 
                 {/* Pinned Section */}
                 {pinnedNotes.length > 0 && (
