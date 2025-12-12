@@ -1,5 +1,5 @@
 import { db } from '@/lib/firebase';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, writeBatch, deleteDoc } from 'firebase/firestore';
 import { calculateStreak } from '@/lib/dashboardUtils';
 import type { Task } from '@/types/task';
 import type { Note } from '@/types/note';
@@ -60,7 +60,6 @@ export const userService = {
         try {
             // 1. Gather all activity dates
             // Prioritize updatedAt (completion time for Done tasks ideally), fallback to createdAt
-            // 1. Gather all activity dates
             // Include BOTH creation (planning) and completion (executing) as activity
             // This ensures we don't lose the streak if the user just created tasks (old behavior)
             const taskCreationDates = tasks.map(t => new Date(t.createdAt));
@@ -71,8 +70,6 @@ export const userService = {
             const noteDates = notes.map(n => new Date(n.updatedAt || n.createdAt));
 
             const allActivityDates = [...taskCreationDates, ...taskCompletionDates, ...noteDates];
-
-
 
             // 2. Calculate streak locally
             const currentStreak = calculateStreak(allActivityDates);
@@ -89,6 +86,54 @@ export const userService = {
         } catch (error) {
             console.error("Error syncing streak:", error);
             return 0;
+        }
+    },
+
+    /**
+     * PERMANENTLY delete all user data.
+     * Deletes tasks, notes, folders, classes, and user profile.
+     */
+    async deleteUserData(uid: string) {
+        try {
+            console.log(`Starting data deletion for user: ${uid}`);
+
+            // Helper to delete specific collection for user
+            const deleteCollectionData = async (collectionName: string) => {
+                const q = query(collection(db, collectionName), where('userId', '==', uid));
+                const snapshot = await getDocs(q);
+
+                if (snapshot.empty) return;
+
+                // Create a batch
+                const batch = writeBatch(db);
+                snapshot.docs.forEach((doc) => {
+                    batch.delete(doc.ref);
+                });
+
+                await batch.commit();
+                console.log(`Deleted ${snapshot.size} documents from ${collectionName}`);
+            };
+
+            // 1. Delete Tasks
+            await deleteCollectionData('tasks');
+
+            // 2. Delete Notes
+            await deleteCollectionData('notes');
+
+            // 3. Delete Folders
+            await deleteCollectionData('folders');
+
+            // 4. Delete Classes
+            await deleteCollectionData('classes');
+
+            // 5. Delete User Profile
+            const userRef = doc(db, 'users', uid);
+            await deleteDoc(userRef);
+
+            console.log("User data deleted successfully.");
+        } catch (error) {
+            console.error("Error deleting user data:", error);
+            throw error;
         }
     }
 };
