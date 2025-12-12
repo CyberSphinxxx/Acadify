@@ -13,7 +13,8 @@ import {
     Pin,
     MoreVertical,
     Pencil,
-    Trash
+    Trash,
+    Loader2
 } from 'lucide-react';
 import {
     AlertDialog,
@@ -63,6 +64,7 @@ export function NotesSidebar({ notes, selectedNoteId, onSelectNote, userId, fold
     const [classFilter, setClassFilter] = useState<string>('all');
     const [activeFolder, setActiveFolder] = useState<string | null>(null);
     const [isFoldersExpanded, setIsFoldersExpanded] = useState(true);
+    const [isCreating, setIsCreating] = useState(false);
 
     // Dialog states
     const [isCreateFolderDialogOpen, setIsCreateFolderDialogOpen] = useState(false);
@@ -91,11 +93,15 @@ export function NotesSidebar({ notes, selectedNoteId, onSelectNote, userId, fold
     }, [classes]);
 
     const handleCreateNote = async () => {
+        if (isCreating) return;
+        setIsCreating(true);
         try {
             const newId = await noteService.createNote(userId);
             onSelectNote(newId);
         } catch (error) {
             console.error("Failed to create note", error);
+        } finally {
+            setIsCreating(false);
         }
     };
 
@@ -174,8 +180,8 @@ export function NotesSidebar({ notes, selectedNoteId, onSelectNote, userId, fold
                         </DropdownMenuContent>
                     </DropdownMenu>
 
-                    <Button onClick={handleCreateNote} size="icon" className="h-8 w-8 shrink-0">
-                        <Plus className="w-4 h-4" />
+                    <Button onClick={handleCreateNote} size="icon" className="h-8 w-8 shrink-0" disabled={isCreating}>
+                        {isCreating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
                     </Button>
                 </div>
             </div>
