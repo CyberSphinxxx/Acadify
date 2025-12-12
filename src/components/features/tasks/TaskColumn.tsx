@@ -9,9 +9,11 @@ interface TaskColumnProps {
     title: string;
     tasks: Task[];
     onDelete: (id: string) => void;
+    onUpdate?: (id: string, updates: Partial<Task>) => Promise<void>;
+    onEdit?: (task: Task) => void;
 }
 
-export function TaskColumn({ id, title, tasks, onDelete }: TaskColumnProps) {
+export function TaskColumn({ id, title, tasks, onDelete, onUpdate, onEdit }: TaskColumnProps) {
     const { setNodeRef } = useDroppable({ id });
 
     return (
@@ -23,7 +25,13 @@ export function TaskColumn({ id, title, tasks, onDelete }: TaskColumnProps) {
             <SortableContext id={id} items={tasks.map(t => t.id)} strategy={verticalListSortingStrategy}>
                 <div ref={setNodeRef} className={cn("flex-1 min-h-[100px]", tasks.length === 0 && "border-2 border-dashed border-muted-foreground/20 rounded-lg")}>
                     {tasks.map((task) => (
-                        <TaskCard key={task.id} task={task} onDelete={onDelete} />
+                        <TaskCard
+                            key={task.id}
+                            task={task}
+                            onDelete={onDelete}
+                            onUpdate={onUpdate}
+                            onEdit={onEdit}
+                        />
                     ))}
                 </div>
             </SortableContext>
