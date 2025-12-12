@@ -9,8 +9,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { StatCard } from '@/components/features/dashboard/StatCard';
-import { CheckCircle2, FileText, TrendingUp, LogOut, User as UserIcon } from 'lucide-react';
+import { CheckCircle2, FileText, TrendingUp, LogOut, User as UserIcon, Trash2, AlertTriangle } from 'lucide-react';
 import { taskService } from '@/services/taskService';
 import { noteService } from '@/services/noteService';
 import { userService } from '@/services/userService';
@@ -32,6 +43,11 @@ export default function ProfilePage() {
         studyStreak: 0
     });
 
+    // Delete Data States
+    const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+    const [deleteInput, setDeleteInput] = useState('');
+    const [isDeleting, setIsDeleting] = useState(false);
+
     // Derive handle from email
     const handle = user?.email?.split('@')[0] || 'student';
     const isGoogleUser = user?.providerData[0]?.providerId === 'google.com';
@@ -47,9 +63,6 @@ export default function ProfilePage() {
             const unsubNotes = noteService.subscribeToNotes(user.uid, (notes) => {
                 setRawData(prev => ({ ...prev, notes }));
             });
-
-
-
 
             return () => {
                 unsubTasks();
@@ -105,6 +118,21 @@ export default function ProfilePage() {
     const handleLogout = async () => {
         await logout();
         navigate('/');
+    };
+
+    const handleDeleteData = async () => {
+        if (!user || deleteInput !== 'delete my data') return;
+
+        setIsDeleting(true);
+        try {
+            await userService.deleteUserData(user.uid);
+            await logout(); // Logout ensures local state is cleared and user is booted
+            navigate('/'); // Redirect to landing
+        } catch (error) {
+            console.error("Failed to delete data:", error);
+            alert("Failed to delete data. Please try again.");
+            setIsDeleting(false);
+        }
     };
 
     if (!user) return null;
@@ -185,6 +213,61 @@ export default function ProfilePage() {
                                     <LogOut className="mr-2 h-4 w-4" />
                                     Sign Out
                                 </Button>
+                            </div>
+
+                            {/* Hazard Zone */}
+                            <div className="pt-6 border-t mt-6">
+                                <div className="rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20 p-4">
+                                    <h3 className="text-red-600 dark:text-red-400 font-semibold flex items-center gap-2 mb-2">
+                                        <AlertTriangle className="h-4 w-4" /> Hazard Zone
+                                    </h3>
+                                    <p className="text-sm text-red-600/80 dark:text-red-400/80 mb-4">
+                                        Permanently delete all your tasks, notes, classes, and profile data. This action cannot be undone.
+                                    </p>
+
+                                    <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="destructive" className="w-full sm:w-auto">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                Delete All Data
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This action cannot be undone. This will permanently delete your
+                                                    tasks, notes, classes, and remove your data from our servers.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <div className="py-4">
+                                                <Label htmlFor="confirm-delete" className="mb-2 block text-sm font-medium">
+                                                    Type <span className="font-bold select-none">delete my data</span> to confirm:
+                                                </Label>
+                                                <Input
+                                                    id="confirm-delete"
+                                                    value={deleteInput}
+                                                    onChange={(e) => setDeleteInput(e.target.value)}
+                                                    placeholder="delete my data"
+                                                    autoComplete="off"
+                                                />
+                                            </div>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel onClick={() => {
+                                                    setDeleteInput('');
+                                                    setDeleteConfirmOpen(false);
+                                                }}>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    onClick={handleDeleteData}
+                                                    disabled={deleteInput !== 'delete my data' || isDeleting}
+                                                    className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+                                                >
+                                                    {isDeleting ? 'Deleting...' : 'Delete Data'}
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
