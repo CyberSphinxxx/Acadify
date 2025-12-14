@@ -7,10 +7,48 @@ import { TaskListView } from '@/components/features/tasks/TaskListView';
 import { TaskCalendarView } from '@/components/features/tasks/TaskCalendarView';
 import { AddTaskDialog } from '@/components/features/tasks/AddTaskDialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { List, Kanban, Calendar as CalendarIcon } from 'lucide-react';
+import { List, Kanban, Calendar as CalendarIcon, ClipboardList, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from 'sonner';
+
+function EmptyState({ isFiltered, onClearFilters }: { isFiltered: boolean; onClearFilters: () => void }) {
+    return (
+        <div className="flex flex-col items-center justify-center h-full text-center p-8 animate-in fade-in-50">
+            <div className="bg-muted/50 p-4 rounded-full mb-4">
+                <ClipboardList className="h-12 w-12 text-muted-foreground/50" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+                {isFiltered ? 'No matching tasks found' : 'No tasks yet'}
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-sm mb-6">
+                {isFiltered
+                    ? "Try adjusting your filters or search query to find what you're looking for."
+                    : "Create your first task to start tracking your academic progress and stay organized."}
+            </p>
+            {isFiltered ? (
+                <Button variant="outline" onClick={onClearFilters}>
+                    <X className="mr-2 h-4 w-4" />
+                    Clear Filters
+                </Button>
+            ) : (
+                <AddTaskDialog />
+            )}
+        </div>
+    );
+}
 
 export default function Tasks() {
     const { user } = useAuthStore();
@@ -21,18 +59,28 @@ export default function Tasks() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterStatus, setFilterStatus] = useState<'ALL' | 'PENDING' | 'DONE'>('ALL');
 
+    // Deletion State
+    const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+
     useEffect(() => {
         if (!user) return;
         fetchTasks(user.uid);
     }, [user, fetchTasks]);
 
-    const handleDeleteTask = async (taskId: string) => {
-        if (confirm('Are you sure you want to delete this task?')) {
-            try {
-                await deleteTask(taskId);
-            } catch (error) {
-                console.error("Failed to delete task", error);
-            }
+    const handleDeleteTask = (taskId: string) => {
+        setTaskToDelete(taskId);
+    };
+
+    const confirmDelete = async () => {
+        if (!taskToDelete) return;
+        try {
+            await deleteTask(taskToDelete);
+            toast.success("Task deleted successfully");
+        } catch (error) {
+            console.error("Failed to delete task", error);
+            toast.error("Failed to delete task");
+        } finally {
+            setTaskToDelete(null);
         }
     };
 
@@ -60,6 +108,12 @@ export default function Tasks() {
 
         return matchesSearch && matchesStatus && isNotFocusSession;
     });
+
+    const isFiltered = searchQuery.length > 0 || filterStatus !== 'ALL';
+    const handleClearFilters = () => {
+        setSearchQuery('');
+        setFilterStatus('ALL');
+    };
 
     if (loading) {
         return (
@@ -114,10 +168,33 @@ export default function Tasks() {
             </header>
 
             <div className="flex-1 overflow-hidden p-6">
-                {view === 'list' && <TaskListView tasks={filteredTasks} onDelete={handleDeleteTask} onUpdate={handleUpdateTask} />}
-                {view === 'board' && <TaskBoardView tasks={filteredTasks} onDelete={handleDeleteTask} onUpdate={handleUpdateTask} />}
-                {view === 'calendar' && <TaskCalendarView tasks={filteredTasks} />}
+                {filteredTasks.length === 0 && view !== 'calendar' ? (
+                    <EmptyState isFiltered={isFiltered} onClearFilters={handleClearFilters} />
+                ) : (
+                    <>
+                        {view === 'list' && <TaskListView tasks={filteredTasks} onDelete={handleDeleteTask} onUpdate={handleUpdateTask} />}
+                        {view === 'board' && <TaskBoardView tasks={filteredTasks} onDelete={handleDeleteTask} onUpdate={handleUpdateTask} />}
+                        {view === 'calendar' && <TaskCalendarView tasks={filteredTasks} />}
+                    </>
+                )}
             </div>
+
+            <AlertDialog open={!!taskToDelete} onOpenChange={(open) => !open && setTaskToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete your task.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
