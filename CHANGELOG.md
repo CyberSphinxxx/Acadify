@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.8.6] - 2025-12-14
+
+### Fixed
+- **Task Visibility Bug**: Resolved a critical issue where tasks were disappearing from the Dashboard and Calendar views. The issue was caused by incorrect Firestore Timestamp serialization, which has now been fixed in the service layer with added backward compatibility.
+- **Changelog**: Backfilled missing release notes and tags from v1.0.0 to v1.8.5.
+
 ## [1.8.5] - 2025-12-13
 
 ### Added
