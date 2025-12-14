@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useTaskStore } from '@/store/useTaskStore';
-import { format, isSameDay, parse, isAfter } from 'date-fns';
+import { format, isAfter, isToday, isValid, parse } from 'date-fns';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { TodayTimeline } from '@/components/dashboard/TodayTimeline';
 import { DueTodayList } from '@/components/dashboard/DueTodayList';
@@ -35,14 +35,14 @@ export default function TodayPage() {
     const dayIndex = today.getDay();
 
     const overdueTasks = useMemo(() =>
-        tasks.filter(t => t.status !== 'DONE' && t.dueDate && t.dueDate < today && !isSameDay(t.dueDate, today)),
+        tasks.filter(t => t.status !== 'DONE' && t.dueDate && isValid(t.dueDate) && t.dueDate < today && !isToday(t.dueDate)),
         [tasks, today]);
 
     const dueTodayTasks = useMemo(() =>
         tasks.filter(t =>
             t.status !== 'DONE' &&
             (
-                (t.dueDate && isSameDay(t.dueDate, today)) ||
+                (t.dueDate && isValid(t.dueDate) && isToday(t.dueDate)) ||
                 t.status === 'INBOX'
             )
         ).sort((a, b) => {
