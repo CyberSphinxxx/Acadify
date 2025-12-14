@@ -14,6 +14,7 @@ import ProfilePage from "@/pages/ProfilePage"
 import Login from "@/pages/Login"
 import ProtectedRoute from "@/components/auth/ProtectedRoute"
 import { useAuth } from "@/hooks/useAuth"
+import { Toaster } from "sonner"
 
 const router = createBrowserRouter([
   {
@@ -46,7 +47,12 @@ function App() {
   // Initialize auth listener
   useAuth();
 
-  return <RouterProvider router={router} />
+  return (
+    <>
+      <RouterProvider router={router} />
+      <Toaster richColors />
+    </>
+  )
 }
 
 export default App
