@@ -20,12 +20,12 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { taskService } from '@/services/taskService';
+import { useTaskStore } from '@/store/useTaskStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useScheduleStore } from '@/store/useScheduleStore';
 import { useState, useEffect } from 'react';
 import type { TaskPriority, TaskStatus, Task } from '@/types/task';
-import { format } from 'date-fns';
+import { format, parse, startOfDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Calendar } from '@/components/ui/calendar';
 import {
@@ -34,6 +34,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar as CalendarIcon, Plus } from 'lucide-react';
+import { toast } from 'sonner';
 
 const formSchema = z.object({
     title: z.string().min(1, 'Title is required'),
@@ -60,16 +61,19 @@ export function AddTaskDialog({ open: controlledOpen, onOpenChange: setControlle
 
     const { user } = useAuthStore();
     const { classes, fetchClasses } = useScheduleStore();
+    const { addTask, updateTask } = useTaskStore();
 
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
-            title: '',
-            description: '',
-            priority: 'MEDIUM',
-            status: 'TODO',
-            dueDate: defaultDate ? format(defaultDate, 'yyyy-MM-dd') : '',
-            relatedClassId: 'none',
+            title: taskToEdit?.title || '',
+            description: taskToEdit?.description || '',
+            priority: taskToEdit?.priority || 'MEDIUM',
+            status: taskToEdit?.status || 'TODO',
+            dueDate: taskToEdit?.dueDate ? format(new Date(taskToEdit.dueDate), 'yyyy-MM-dd') : (defaultDate ? format(defaultDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')),
+            relatedClassId: taskToEdit?.relatedClassId || 'none',
+            isRecurring: taskToEdit?.isRecurring || false,
+            recurrencePattern: taskToEdit?.recurrencePattern || undefined,
         },
     });
 
@@ -79,31 +83,19 @@ export function AddTaskDialog({ open: controlledOpen, onOpenChange: setControlle
         }
     }, [open, user, fetchClasses]);
 
-    // Reset form when taskToEdit changes or dialog opens
+    // Reset form when taskToEdit changes or dialog opens - handle late prop updates
     useEffect(() => {
         if (open) {
-            if (taskToEdit) {
-                form.reset({
-                    title: taskToEdit.title,
-                    description: taskToEdit.description || '',
-                    priority: taskToEdit.priority,
-                    status: taskToEdit.status,
-                    dueDate: taskToEdit.dueDate ? format(new Date(taskToEdit.dueDate), 'yyyy-MM-dd') : '',
-                    relatedClassId: taskToEdit.relatedClassId || 'none',
-                    isRecurring: taskToEdit.isRecurring,
-                    recurrencePattern: taskToEdit.recurrencePattern,
-                });
-            } else {
-                form.reset({
-                    title: '',
-                    description: '',
-                    priority: 'MEDIUM',
-                    status: 'TODO',
-                    dueDate: defaultDate ? format(defaultDate, 'yyyy-MM-dd') : '',
-                    relatedClassId: 'none',
-                    isRecurring: false,
-                });
-            }
+            form.reset({
+                title: taskToEdit?.title || '',
+                description: taskToEdit?.description || '',
+                priority: taskToEdit?.priority || 'MEDIUM',
+                status: taskToEdit?.status || 'TODO',
+                dueDate: taskToEdit?.dueDate ? format(new Date(taskToEdit.dueDate), 'yyyy-MM-dd') : (defaultDate ? format(defaultDate, 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')),
+                relatedClassId: taskToEdit?.relatedClassId || 'none',
+                isRecurring: taskToEdit?.isRecurring || false,
+                recurrencePattern: taskToEdit?.recurrencePattern || undefined,
+            });
         }
     }, [open, taskToEdit, form, defaultDate]);
 
@@ -111,35 +103,33 @@ export function AddTaskDialog({ open: controlledOpen, onOpenChange: setControlle
         if (!user) return;
 
         try {
+            const commonData = {
+                title: values.title,
+                description: values.description,
+                priority: values.priority as TaskPriority,
+                status: values.status as TaskStatus,
+                dueDate: values.dueDate ? startOfDay(parse(values.dueDate, 'yyyy-MM-dd', new Date())) : undefined,
+                relatedClassId: values.relatedClassId === 'none' ? undefined : values.relatedClassId,
+                isRecurring: values.isRecurring,
+                recurrencePattern: values.recurrencePattern as 'DAILY' | 'WEEKLY' | 'MONTHLY' | undefined,
+            };
+
             if (taskToEdit) {
-                await taskService.updateTask(taskToEdit.id, {
-                    title: values.title,
-                    description: values.description,
-                    priority: values.priority as TaskPriority,
-                    status: values.status as TaskStatus,
-                    dueDate: values.dueDate ? new Date(values.dueDate) : undefined,
-                    relatedClassId: values.relatedClassId === 'none' ? undefined : values.relatedClassId,
-                    isRecurring: values.isRecurring,
-                    recurrencePattern: values.recurrencePattern as 'DAILY' | 'WEEKLY' | 'MONTHLY' | undefined,
-                });
+                await updateTask(taskToEdit.id, commonData);
+                toast.success("Task updated successfully");
             } else {
-                await taskService.addTask({
+                await addTask({
+                    ...commonData,
                     userId: user.uid,
-                    title: values.title,
-                    description: values.description,
-                    priority: values.priority as TaskPriority,
-                    status: values.status as TaskStatus,
-                    dueDate: values.dueDate ? new Date(values.dueDate) : undefined,
-                    relatedClassId: values.relatedClassId === 'none' ? undefined : values.relatedClassId,
-                    isRecurring: values.isRecurring,
-                    recurrencePattern: values.recurrencePattern as 'DAILY' | 'WEEKLY' | 'MONTHLY' | undefined,
                     createdAt: new Date(),
                 });
+                toast.success("Task created successfully");
             }
             setOpen(false);
             form.reset(); // Reset to defaults after submit
         } catch (error) {
             console.error("Failed to save task", error);
+            toast.error("Failed to save task");
         }
     };
 
@@ -304,7 +294,7 @@ export function AddTaskDialog({ open: controlledOpen, onOpenChange: setControlle
                             />
                         </div>
 
-                        <Button type="submit" className="w-full">Create Task</Button>
+                        <Button type="submit" className="w-full">{taskToEdit ? 'Update Task' : 'Create Task'}</Button>
                     </form>
                 </Form>
             </DialogContent>
