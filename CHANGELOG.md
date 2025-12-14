@@ -6,9 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **Empty State**: Added a user-friendly empty state to the Tasks tab, guiding users when no tasks are present or matching filters.
+- **Focus Mode**: New Zen Mode toggle in the Note Editor to hide distractions and maximize the editor.
+- **Line Height Customization**: New toolbar option to adjust line height (Default, Single, 1.15, 1.5, Double).
+- **Maximize/Minimize**: Added icons and functionality to toggle fullscreen mode.
 
 ### Changed
 - **Delete Confirmation**: Replaced native browser alerts with custom `AlertDialog` components for deleting Tasks, Notes, and Focus Sessions to match the application's premium aesthetic.
+- **Header Redesign**: Cleaned up the Note Editor header by removing input borders, increasing title size, and reorganizing metadata for a sleeker look.
+- **Spacing**: Increased bottom padding (`pb-32`) in the editor to prevent text from being cut off at the bottom.
+- **Types**: Extended Tiptap commands to support `setLineHeight` and `unsetLineHeight`.
 
 ## [1.8.5] - 2025-12-13
 
