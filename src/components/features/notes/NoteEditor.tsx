@@ -22,6 +22,16 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { format, isValid } from 'date-fns';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface NoteEditorProps {
     note: Note;
@@ -33,6 +43,7 @@ export function NoteEditor({ note, availableFolders = [] }: NoteEditorProps) {
     const [title, setTitle] = useState(note.title);
     const [tagInput, setTagInput] = useState('');
     const [newFolderInput, setNewFolderInput] = useState(''); // For creating new folder
+    const [isDeleteAlertOpen, setIsDeleteAlertOpen] = useState(false);
 
     const { classes } = useScheduleStore();
 
@@ -133,9 +144,17 @@ export function NoteEditor({ note, availableFolders = [] }: NoteEditorProps) {
         handleSave({ tags: newTags });
     };
 
-    const handleDelete = async () => {
-        if (confirm("Are you sure you want to delete this note?")) {
+    const handleDelete = () => {
+        setIsDeleteAlertOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        try {
             await noteService.deleteNote(note.id);
+        } catch (error) {
+            console.error("Failed to delete note", error);
+        } finally {
+            setIsDeleteAlertOpen(false);
         }
     };
 
@@ -316,6 +335,23 @@ export function NoteEditor({ note, availableFolders = [] }: NoteEditorProps) {
             <div className="flex-1 overflow-y-auto">
                 <EditorContent editor={editor} />
             </div>
+
+            <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This action cannot be undone. This will permanently delete this note.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
