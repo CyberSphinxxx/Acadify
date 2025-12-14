@@ -12,6 +12,9 @@ export function removeUndefined(obj: any): any {
     if (obj === null || typeof obj !== 'object') {
         return obj;
     }
+    if (obj instanceof Date) {
+        return obj;
+    }
     if (Array.isArray(obj)) {
         return obj.map(removeUndefined);
     }
