@@ -7,7 +7,9 @@ import {
     isSameDay,
     addMonths,
     subMonths,
-    isToday
+    isToday,
+    startOfDay,
+    isValid
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -41,7 +43,11 @@ export function TaskCalendarView({ tasks }: TaskCalendarViewProps) {
     };
 
     const getTasksForDate = (date: Date) => {
-        return tasks.filter(task => task.dueDate && isSameDay(task.dueDate, date));
+        return tasks.filter(task => {
+            if (!task.dueDate || !isValid(task.dueDate)) return false;
+            // Normalize both to start of day for accurate comparison
+            return isSameDay(startOfDay(task.dueDate), startOfDay(date));
+        });
     };
 
     return (
