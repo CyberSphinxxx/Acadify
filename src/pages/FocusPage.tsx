@@ -27,6 +27,16 @@ import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { FocusSidebar } from '@/components/features/focus/FocusSidebar';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function FocusPage() {
     const { user } = useAuthStore();
@@ -54,6 +64,20 @@ export default function FocusPage() {
 
     // Phase 4: Timer Logic (Server-Side Persistence)
     const [now, setNow] = useState(Date.now()); // Local ticker for UI updates
+    const [taskToDeleteId, setTaskToDeleteId] = useState<string | null>(null);
+
+    const handleDeleteFromArchive = (taskId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
+        setTaskToDeleteId(taskId);
+    };
+
+    const confirmDeleteSession = async () => {
+        if (taskToDeleteId) {
+            const { deleteTask } = useTaskStore.getState();
+            await deleteTask(taskToDeleteId);
+            setTaskToDeleteId(null);
+        }
+    };
 
     // Derived State
     const activeTask = activeTaskId ? (tasks.find(t => t.id === activeTaskId) || focusedTasks.find(t => t.id === activeTaskId)) : null;
@@ -319,13 +343,6 @@ export default function FocusPage() {
         navigate('/dashboard');
     };
 
-    const handleDeleteFromArchive = async (taskId: string, e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (confirm("Permanently delete this session and task?")) {
-            const { deleteTask } = useTaskStore.getState();
-            await deleteTask(taskId);
-        }
-    };
 
     const handleReviveTask = async (taskId: string, e: React.MouseEvent) => {
         e.stopPropagation();
@@ -725,6 +742,23 @@ export default function FocusPage() {
                     </div>
                 )}
             </div>
-        </div>
+
+            <AlertDialog open={!!taskToDeleteId} onOpenChange={(open) => !open && setTaskToDeleteId(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Permanently delete this session?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            This will delete the focus session and the associated task. This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={confirmDeleteSession} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Delete
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </div >
     );
 }
