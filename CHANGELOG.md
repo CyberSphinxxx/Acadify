@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 ## [1.8.6] - 2025-12-14
 
+### Added
+- **Empty State**: Added a user-friendly empty state to the Tasks tab, guiding users when no tasks are present or matching filters.
+
+### Changed
+- **Delete Confirmation**: Replaced native browser alerts with custom `AlertDialog` components for deleting Tasks, Notes, and Focus Sessions to match the application's premium aesthetic.
+
 ### Fixed
 - **Task Visibility Bug**: Resolved a critical issue where tasks were disappearing from the Dashboard and Calendar views. The issue was caused by incorrect Firestore Timestamp serialization, which has now been fixed in the service layer with added backward compatibility.
 - **Changelog**: Backfilled missing release notes and tags from v1.0.0 to v1.8.5.
