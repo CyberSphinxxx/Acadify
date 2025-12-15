@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.0] - 2025-12-15
+
+### Major Optimization & Refactoring
+This release focuses on improving codebase maintainability, scalability, and application performance through massive component decomposition and build optimizations.
+
+### Changed
+- **Page Architecture**: Refactored monolithic pages (`FocusPage`, `ProfilePage`, `Schedule`) into smaller, modular sub-components located in `src/components/features/`.
+- **Logic Extraction**: Moved complex logic from UI components into custom hooks (e.g., `useScheduleLogic`) to separate concerns.
+- **Build Performance**: Implemented lazy loading for all routes in `App.tsx` and configured manual chunk splitting in `vite.config.ts`, significantly reducing initial load times and resolving large chunk warnings.
+
+### Added
+- **Focus Features**: Decomposed Focus Mode into `FocusDashboard`, `FocusSession`, `FocusHeader`, `FocusTaskBreakdown`, `FocusResources`, and `FocusNotebook`.
+- **Profile Features**: Decomposed Profile into `ProfileHeader`, `ProfileSettings`, `ProfileInsights`, and a dedicated `DangerZone` component.
+- **Schedule Features**: Extracted `ScheduleHeader` and encapsulated state logic.
+
 ## [1.8.7] - 2025-12-15
 
 ### Fixed
