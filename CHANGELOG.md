@@ -9,7 +9,7 @@ All notable changes to this project will be documented in this file.
 - **Toolbar Reactivity**: Fixed an issue where the rich-text toolbar buttons (Bold, Italic) would not visually update immediately upon interaction.
 - **UI Polish**: Added tooltips, animations, and better active states to the editor interface.
 
-### Added
+## [1.8.6] - 2025-12-14
 - **Empty State**: Added a user-friendly empty state to the Tasks tab, guiding users when no tasks are present or matching filters.
 - **Focus Mode**: New Zen Mode toggle in the Note Editor to hide distractions and maximize the editor.
 - **Line Height Customization**: New toolbar option to adjust line height (Default, Single, 1.15, 1.5, Double).
