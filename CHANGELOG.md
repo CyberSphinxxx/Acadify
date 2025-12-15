@@ -2,7 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
-## [1.8.6] - 2025-12-14
+## [1.8.7] - 2025-12-15
+
+### Fixed
+- **Note Editor Performance**: Refactored `NoteEditor` into memoized sub-components (`NoteHeader`, `NoteToolbar`) to eliminate input lag.
+- **Toolbar Reactivity**: Fixed an issue where the rich-text toolbar buttons (Bold, Italic) would not visually update immediately upon interaction.
+- **UI Polish**: Added tooltips, animations, and better active states to the editor interface.
 
 ### Added
 - **Empty State**: Added a user-friendly empty state to the Tasks tab, guiding users when no tasks are present or matching filters.
