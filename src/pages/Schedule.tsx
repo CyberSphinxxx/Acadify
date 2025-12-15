@@ -1,197 +1,26 @@
-import { generateICS } from '@/lib/icsGenerator';
-import { Loader2, Download, List, Calendar as CalendarIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { SemesterSettingsDialog } from '@/components/features/schedule/SemesterSettingsDialog';
-import { useEffect, useState } from 'react';
-import { useAuth } from '@/hooks/useAuth';
-import { scheduleService } from '@/services/scheduleService';
-import type { ClassSession } from '@/types/schedule';
+import { Loader2, List, Calendar as CalendarIcon } from 'lucide-react';
 import { ScheduleGrid } from '@/components/features/schedule/ScheduleGrid';
-import { AddClassDialog } from '@/components/features/schedule/AddClassDialog';
 import { SubjectList } from '@/components/features/schedule/SubjectList';
 import { EditClassDialog } from '@/components/features/schedule/EditClassDialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { toast } from 'sonner';
+import { useScheduleLogic } from '@/hooks/useScheduleLogic';
+import { ScheduleHeader } from '@/components/features/schedule/ScheduleHeader';
 
 export default function Schedule() {
-    const { user } = useAuth();
-    const [classes, setClasses] = useState<ClassSession[]>([]);
-    const [loading, setLoading] = useState(true);
-
-    // Edit Dialog State
-    const [editDialogOpen, setEditDialogOpen] = useState(false);
-    const [editingCourse, setEditingCourse] = useState<{
-        subject: string;
-        code: string;
-        sessions: ClassSession[];
-    } | null>(null);
-
-    useEffect(() => {
-        if (user?.uid) {
-            loadClasses();
-        }
-    }, [user]);
-
-    const loadClasses = async () => {
-        try {
-            if (!user) return;
-            const data = await scheduleService.getClasses(user.uid);
-            setClasses(data);
-        } catch (error) {
-            console.error("Failed to load classes", error);
-            toast.error("Failed to load schedule");
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleAddClass = async (data: any) => {
-        if (!user) return;
-        try {
-            // Check if sessions is array
-            if (!data.sessions || !Array.isArray(data.sessions)) {
-                toast.error("Invalid class data");
-                return;
-            }
-
-            const classesToAdd = data.sessions.map((session: any) => ({
-                userId: user.uid,
-                subject: data.subject,
-                code: data.code,
-                instructor: data.instructor,
-                color: data.color,
-                dayOfWeek: parseInt(session.dayOfWeek),
-                startTime: session.startTime,
-                endTime: session.endTime,
-                room: session.room
-            }));
-
-            await scheduleService.batchAddClasses(user.uid, classesToAdd);
-            await loadClasses();
-            toast.success("Class added successfully");
-        } catch (error) {
-            console.error("Failed to add class", error);
-            toast.error("Failed to add class");
-        }
-    };
-
-    const handleDeleteClass = async (classId: string) => {
-        try {
-            await scheduleService.deleteClass(classId);
-            setClasses(prev => prev.filter(c => c.id !== classId));
-            toast.success("Class session deleted");
-        } catch (error) {
-            console.error("Failed to delete class", error);
-            toast.error("Failed to delete class session");
-        }
-    };
-
-    const handleDeleteCourse = async (subject: string, code: string) => {
-        try {
-            const classesToDelete = classes.filter(c => c.subject === subject && c.code === code);
-            const idsToDelete = classesToDelete.map(c => c.id);
-            if (idsToDelete.length > 0) {
-                await scheduleService.batchDeleteClasses(idsToDelete);
-                setClasses(prev => prev.filter(c => !(c.subject === subject && c.code === code)));
-                toast.success(`Deleted all sessions for ${subject}`);
-            }
-        } catch (error) {
-            console.error("Failed to delete course", error);
-            toast.error("Failed to delete course");
-        }
-    };
-
-    const handleEditClass = (session: ClassSession) => {
-        // Find all sessions for this course
-        const courseSessions = classes.filter(c => c.subject === session.subject && c.code === session.code);
-        setEditingCourse({
-            subject: session.subject,
-            code: session.code,
-            sessions: courseSessions
-        });
-        setEditDialogOpen(true);
-    };
-
-    const handleEditCourseFromList = (course: { subject: string; code: string; sessions: ClassSession[] }) => {
-        setEditingCourse(course);
-        setEditDialogOpen(true);
-    };
-
-    const handleSaveCourse = async (data: any, initialSessions: ClassSession[]) => {
-        if (!user) return;
-        try {
-            const courseSubject = data.subject;
-            const courseCode = data.code;
-            const courseColor = data.color;
-            const courseInstructor = data.instructor;
-
-            const existingIds = new Set(initialSessions.map(s => s.id));
-            const keptIds = new Set<string>();
-
-            const sessionsToUpdate: any[] = [];
-            const sessionsToAdd: any[] = [];
-
-            data.sessions.forEach((session: any) => {
-                const sessionData = {
-                    userId: user.uid,
-                    subject: courseSubject,
-                    code: courseCode,
-                    instructor: courseInstructor,
-                    color: courseColor,
-                    dayOfWeek: parseInt(session.dayOfWeek),
-                    startTime: session.startTime,
-                    endTime: session.endTime,
-                    room: session.room
-                };
-
-                if (session.id && existingIds.has(session.id)) {
-                    sessionsToUpdate.push({ id: session.id, ...sessionData });
-                    keptIds.add(session.id);
-                } else {
-                    sessionsToAdd.push(sessionData);
-                }
-            });
-
-            const idsToDelete = initialSessions
-                .filter(s => !keptIds.has(s.id))
-                .map(s => s.id);
-
-            // Execute updates
-            const promises = [];
-
-            if (idsToDelete.length > 0) {
-                promises.push(scheduleService.batchDeleteClasses(idsToDelete));
-            }
-
-            if (sessionsToAdd.length > 0) {
-                promises.push(scheduleService.batchAddClasses(user.uid, sessionsToAdd));
-            }
-
-            sessionsToUpdate.forEach(s => {
-                promises.push(scheduleService.updateClass(s.id, s));
-            });
-
-            await Promise.all(promises);
-            await loadClasses();
-            toast.success("Course updated successfully");
-        } catch (error) {
-            console.error("Failed to update course", error);
-            toast.error("Failed to update course");
-        }
-    };
-
-    const handleExport = () => {
-        if (classes.length === 0) return;
-        const icsString = generateICS(classes);
-        const blob = new Blob([icsString], { type: 'text/calendar;charset=utf-8' });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.setAttribute('download', 'acadify_schedule.ics');
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-    };
+    const {
+        classes,
+        loading,
+        editDialogOpen,
+        setEditDialogOpen,
+        editingCourse,
+        handleAddClass,
+        handleDeleteClass,
+        handleDeleteCourse,
+        handleEditClass,
+        handleEditCourseFromList,
+        handleSaveCourse,
+        handleExport
+    } = useScheduleLogic();
 
     if (loading) {
         return (
@@ -203,17 +32,11 @@ export default function Schedule() {
 
     return (
         <div className="flex flex-col h-full gap-4">
-            <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold">Class Schedule</h1>
-                <div className="flex items-center gap-2">
-                    <SemesterSettingsDialog />
-                    <Button variant="outline" size="sm" onClick={handleExport} disabled={classes.length === 0} className="hidden sm:flex">
-                        <Download className="w-4 h-4 mr-2" />
-                        Export
-                    </Button>
-                    <AddClassDialog onAddClass={handleAddClass} />
-                </div>
-            </div>
+            <ScheduleHeader
+                onExport={handleExport}
+                hasClasses={classes.length > 0}
+                onAddClass={handleAddClass}
+            />
 
             <Tabs defaultValue="calendar" className="flex-1 flex flex-col min-h-0">
                 <div className="flex items-center justify-between mb-4">
@@ -253,3 +76,4 @@ export default function Schedule() {
         </div>
     )
 }
+
