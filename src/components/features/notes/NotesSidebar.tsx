@@ -14,6 +14,7 @@ import {
     MoreVertical,
     Pencil,
     Trash,
+    Trash2,
     Loader2
 } from 'lucide-react';
 import {
@@ -76,6 +77,8 @@ export function NotesSidebar({ notes, selectedNoteId, onSelectNote, userId, fold
 
     const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+
+    const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
 
     const { classes } = useScheduleStore();
 
@@ -375,13 +378,48 @@ export function NotesSidebar({ notes, selectedNoteId, onSelectNote, userId, fold
                     </AlertDialogContent>
                 </AlertDialog>
 
+                {/* Delete Note Alert Dialog */}
+                <AlertDialog open={!!noteToDelete} onOpenChange={(open) => !open && setNoteToDelete(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Delete this note?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Are you sure you want to delete this note? This action cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                onClick={async () => {
+                                    if (noteToDelete) {
+                                        await noteService.deleteNote(noteToDelete);
+                                        if (selectedNoteId === noteToDelete) onSelectNote(''); // Deselect if current
+                                        setNoteToDelete(null);
+                                    }
+                                }}
+                            >
+                                Delete
+                            </AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+
                 {/* Pinned Section */}
                 {pinnedNotes.length > 0 && (
                     <div className="space-y-1">
                         <div className="px-2 pb-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                             <Pin className="w-3 h-3" /> Pinned
                         </div>
-                        {pinnedNotes.map(note => <NoteItem key={note.id} note={note} selectedNoteId={selectedNoteId} onSelect={onSelectNote} />)}
+                        {pinnedNotes.map(note => (
+                            <NoteItem
+                                key={note.id}
+                                note={note}
+                                selectedNoteId={selectedNoteId}
+                                onSelect={onSelectNote}
+                                onDelete={(id) => setNoteToDelete(id)}
+                            />
+                        ))}
                     </div>
                 )}
 
@@ -392,7 +430,15 @@ export function NotesSidebar({ notes, selectedNoteId, onSelectNote, userId, fold
                             <Clock className="w-3 h-3" /> Recent
                         </div>
                     )}
-                    {unpinnedNotes.map(note => <NoteItem key={note.id} note={note} selectedNoteId={selectedNoteId} onSelect={onSelectNote} />)}
+                    {unpinnedNotes.map(note => (
+                        <NoteItem
+                            key={note.id}
+                            note={note}
+                            selectedNoteId={selectedNoteId}
+                            onSelect={onSelectNote}
+                            onDelete={(id) => setNoteToDelete(id)}
+                        />
+                    ))}
 
                     {filteredNotes.length === 0 && (
                         <div className="p-4 text-center text-sm text-muted-foreground">
@@ -405,12 +451,12 @@ export function NotesSidebar({ notes, selectedNoteId, onSelectNote, userId, fold
     );
 }
 
-function NoteItem({ note, selectedNoteId, onSelect }: { note: Note, selectedNoteId: string | null, onSelect: (id: string) => void }) {
+function NoteItem({ note, selectedNoteId, onSelect, onDelete }: { note: Note, selectedNoteId: string | null, onSelect: (id: string) => void, onDelete: (id: string) => void }) {
     return (
         <button
             onClick={() => onSelect(note.id)}
             className={cn(
-                "w-full text-left p-3 rounded-lg transition-all group border border-transparent",
+                "w-full text-left p-3 rounded-lg transition-all group border border-transparent relative pr-8", // Added relative and pr-8
                 selectedNoteId === note.id
                     ? "bg-background border-border shadow-sm"
                     : "hover:bg-accent/50 hover:border-accent"
@@ -454,6 +500,18 @@ function NoteItem({ note, selectedNoteId, onSelect }: { note: Note, selectedNote
                         )}
                     </div>
                 </div>
+            </div>
+
+            {/* Delete Button */}
+            <div
+                role="button"
+                className="absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-destructive/10 rounded-md text-muted-foreground hover:text-destructive"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(note.id);
+                }}
+            >
+                <Trash2 className="w-4 h-4" />
             </div>
         </button>
     );
